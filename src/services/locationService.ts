@@ -11,6 +11,7 @@ export interface Location {
   addressLine?: string
   streetAddress: string
   zip: string
+  userCount?: number
   createdAt?: string
   updatedAt?: string
   // Organization data from aggregation
@@ -84,6 +85,12 @@ export const locationApi = {
   getMyLocations: async (): Promise<Location[]> => {
     const response = await api.get('/user-management/locations/my')
     return response.data.data
+  },
+
+  // Get all locations without pagination
+  getAllLocations: async (): Promise<Location[]> => {
+    const response = await api.get('/user-management/locations/all')
+    return response.data.data || response.data
   },
 
   // Create location

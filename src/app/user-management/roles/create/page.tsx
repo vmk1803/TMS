@@ -3,56 +3,15 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Input, Checkbox, Button, message } from 'antd'
+import { ChevronLeft } from 'lucide-react'
+import { useRoles, useRole } from '@/hooks/useRoles'
 
-// Dummy roles data (same as in roles page)
-const roles = [
-  {
-    id: 1,
-    name: 'Admin',
-    description: 'Full system access with all permissions',
-    modules: 'All modules',
-    permissions: ['View', 'Create', 'Edit', '+3 More'],
-    users: 10,
-  },
-  {
-    id: 2,
-    name: 'Manager',
-    description: 'Department-level management access',
-    modules: 'Users, Tasks, Projects',
-    permissions: ['Read', 'Update', 'Assign', 'View Reports'],
-    users: 10,
-  },
-  {
-    id: 3,
-    name: 'User',
-    description: 'Standard user access',
-    modules: 'Profile, Tasks',
-    permissions: ['Read (self)', 'Update (self)', '+2 More'],
-    users: 10,
-  },
-  {
-    id: 4,
-    name: 'Service Desk Agent',
-    description: 'Department-level management access',
-    modules: 'Tickets, SLA, Assets',
-    permissions: ['Ticket Read', 'Ticket Update', 'Asset View'],
-    users: 10,
-  },
-  {
-    id: 5,
-    name: 'Asset Manager',
-    description: 'Department-level management access',
-    modules: 'Asset Inventory',
-    permissions: ['Asset Create', 'Asset Assign', 'Asset Delete'],
-    users: 10,
-  },
-]
-
+// Permissions config matching our backend schema
 const permissionsConfig = {
-  Projects: ['Create', 'Edit', 'View', 'Delete', 'Export', 'Update'],
-  Task: ['Create', 'Edit', 'View', 'Delete'],
-  Users: ['Create', 'Edit', 'View', 'Delete', 'Export', 'Update'],
-  Settings: ['Create', 'Edit', 'View', 'Delete', 'Export', 'Update'],
+  Projects: ['CREATE', 'EDIT', 'VIEW', 'DELETE', 'EXPORT', 'UPDATE'],
+  Task: ['CREATE', 'EDIT', 'VIEW', 'DELETE', 'EXPORT', 'UPDATE'],
+  Users: ['CREATE', 'EDIT', 'VIEW', 'DELETE', 'EXPORT', 'UPDATE'],
+  Settings: ['CREATE', 'EDIT', 'VIEW', 'DELETE', 'EXPORT', 'UPDATE'],
 }
 
 export default function CreateRolePage() {
@@ -61,52 +20,97 @@ export default function CreateRolePage() {
   const roleId = searchParams.get('roleId')
   const isEditMode = !!roleId
 
+  // Use hooks for API integration
+  const { createRole, updateRole } = useRoles()
+  const { role: existingRole, loading: roleLoading, error: roleError } = useRole(roleId || null)
+
   const [roleName, setRoleName] = useState('')
   const [description, setDescription] = useState('')
   const [permissions, setPermissions] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   // Load role data if in edit mode
   useEffect(() => {
-    if (isEditMode && roleId) {
-      const role = roles.find(r => r.id === parseInt(roleId))
-      if (role) {
-        setRoleName(role.name)
-        setDescription(role.description)
-        // Convert permissions array to object format for the form
-        // For demo purposes, we'll set some default permissions
-        setPermissions({
-          Projects: ['Create', 'Edit', 'View', 'Delete', 'Export', 'Update'],
-          Task: ['Create', 'Edit', 'View', 'Delete'],
-          Users: ['View', 'Update'],
-          Settings: ['Create', 'Edit', 'View', 'Delete', 'Export', 'Update'],
-        })
+    if (isEditMode && existingRole) {
+      setRoleName(existingRole.name)
+      setDescription(existingRole.description || '')
+
+      // Convert backend permissions format to frontend format
+      const frontendPermissions: Record<string, string[]> = {
+        Projects: existingRole.permissions.projects || [],
+        Task: existingRole.permissions.task || [],
+        Users: existingRole.permissions.users || [],
+        Settings: existingRole.permissions.settings || []
       }
+
+      setPermissions(frontendPermissions)
     }
-  }, [isEditMode, roleId])
+  }, [isEditMode, existingRole])
+
+  // Show error if failed to load role in edit mode
+  useEffect(() => {
+    if (roleError) {
+      message.error('Failed to load role data')
+    }
+  }, [roleError])
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {}
+
+    if (!roleName.trim()) {
+      newErrors.name = 'Role name is required'
+    }
+
+    if (!description.trim()) {
+      newErrors.description = 'Description is required'
+    }
+
+    // Check if at least one section has permissions
+    const hasPermissions = Object.values(permissions).some(sectionPerms => sectionPerms.length > 0)
+    if (!hasPermissions) {
+      newErrors.permissions = 'At least one permission must be selected'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = async () => {
-    if (!roleName.trim() || !description.trim()) {
-      message.error('Please fill in all required fields')
+    if (!validateForm()) {
       return
     }
 
     setLoading(true)
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Transform frontend permissions to backend format
+      const backendPermissions = {
+        projects: permissions.Projects || [],
+        task: permissions.Task || [],
+        users: permissions.Users || [],
+        settings: permissions.Settings || []
+      }
 
-      if (isEditMode) {
+      const roleData = {
+        name: roleName.trim(),
+        description: description.trim(),
+        permissions: backendPermissions
+      }
+
+      if (isEditMode && roleId) {
+        await updateRole(roleId, roleData)
         message.success('Role updated successfully')
       } else {
+        await createRole(roleData)
         message.success('Role created successfully')
       }
 
       // Redirect back to roles page
       router.push('/user-management/roles')
     } catch (error) {
-      message.error('An error occurred. Please try again.')
+      console.error('Role submission error:', error)
+      message.error('Failed to save role. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -119,11 +123,18 @@ export default function CreateRolePage() {
   const togglePermission = (module: string, perm: string) => {
     setPermissions(prev => {
       const current = prev[module] || []
+      const updated = current.includes(perm)
+        ? current.filter(p => p !== perm)
+        : [...current, perm]
+
+      // Clear permission error when user selects a permission
+      if (errors.permissions && updated.length > 0) {
+        setErrors(prev => ({ ...prev, permissions: '' }))
+      }
+
       return {
         ...prev,
-        [module]: current.includes(perm)
-          ? current.filter(p => p !== perm)
-          : [...current, perm],
+        [module]: updated,
       }
     })
   }
@@ -131,30 +142,38 @@ export default function CreateRolePage() {
   const toggleSelectAll = (module: string) => {
     setPermissions(prev => ({
       ...prev,
-      [module]:
-        prev[module]?.length === permissionsConfig[module].length
-          ? []
-          : permissionsConfig[module],
+      [module]: prev[module]?.length === permissionsConfig[module].length
+        ? []
+        : [...permissionsConfig[module]],
     }))
   }
 
   const isChecked = (module: string, perm: string) =>
     permissions[module]?.includes(perm)
 
+  if (roleLoading && isEditMode) {
+    return (
+      <div className="bg-[#F7F9FB] min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    )
+  }
+
   return (
     <div className="bg-[#F7F9FB] min-h-screen">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">
-            {isEditMode ? 'Edit Role' : 'Create New Role'}
-          </h1>
-          <p className="text-sm text-gray-500">
-            {isEditMode ? 'Update role details and permissions' : 'Add a new role with specific permissions'}
-          </p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-secondary hover:text-secondary/80"
+          >
+            <ChevronLeft size={16} />
+            Back
+          </button>
         </div>
         <div className="flex gap-3">
-          <Button onClick={handleCancel} className='rounded-xl'>Cancel</Button>
+          <Button onClick={handleCancel} disabled={loading} className='rounded-xl'>Cancel</Button>
           <Button
             type="primary"
             className="bg-secondary rounded-xl"
@@ -173,10 +192,16 @@ export default function CreateRolePage() {
           <label className="text-sm font-medium">Role Name*</label>
           <Input
             value={roleName}
-            onChange={e => setRoleName(e.target.value)}
+            onChange={(e) => {
+              setRoleName(e.target.value)
+              if (errors.name) setErrors(prev => ({ ...prev, name: '' }))
+            }}
             placeholder="Enter role name"
-            className="mt-1 rounded-xl"
+            className={`mt-1 rounded-xl ${errors.name ? 'border-red-500' : ''}`}
           />
+          {errors.name && (
+            <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+          )}
         </div>
 
         {/* Description */}
@@ -184,47 +209,58 @@ export default function CreateRolePage() {
           <label className="text-sm font-medium">Description*</label>
           <Input.TextArea
             value={description}
-            onChange={e => setDescription(e.target.value)}
+            onChange={(e) => {
+              setDescription(e.target.value)
+              if (errors.description) setErrors(prev => ({ ...prev, description: '' }))
+            }}
             placeholder="Enter description"
             rows={3}
-            className="mt-1 rounded-xl"
+            className={`mt-1 rounded-xl ${errors.description ? 'border-red-500' : ''}`}
           />
+          {errors.description && (
+            <p className="text-red-500 text-xs mt-1">{errors.description}</p>
+          )}
         </div>
 
         {/* Permissions */}
         <div>
           <h3 className="text-md font-bold mb-4">Role Permissions</h3>
 
-          <div className="grid grid-cols-10 px-2 text-sm font-medium text-gray-500 mb-2">
-            <div className='text-secondary'>Name</div>
-            <div className='text-secondary px-2'>Access</div>
-            
+          {errors.permissions && (
+            <p className="text-red-500 text-xs mb-4">{errors.permissions}</p>
+          )}
+
+          <div className="grid grid-cols-8 px-2 text-sm font-medium text-gray-500 mb-2">
+            <div className='text-secondary'>Section</div>
+            <div className='text-secondary px-2 col-span-7'>Permissions</div>
           </div>
 
           {Object.entries(permissionsConfig).map(([module, perms]) => (
             <div
               key={module}
-              className="grid grid-cols-10 items-center p-2 border-t"
+              className="grid grid-cols-8 items-center p-3 border-t"
             >
               <div className="font-medium">{module}</div>
 
-              <Checkbox
-                checked={permissions[module]?.length === perms.length}
-                onChange={() => toggleSelectAll(module)}
-                className='px-2'
-              > Select All
+              <div className="col-span-7 flex flex-wrap gap-2">
+                <Checkbox
+                  checked={permissions[module]?.length === perms.length}
+                  onChange={() => toggleSelectAll(module)}
+                  className='mr-2'
+                >
+                  Select All
                 </Checkbox>
 
-              {perms.map(perm => (
-                <Checkbox
-                  key={perm}
-                   className='px-2'
-                  checked={isChecked(module, perm)}
-                  onChange={() => togglePermission(module, perm)}
-                >
-                  {perm}
-                </Checkbox>
-              ))}
+                {perms.map(perm => (
+                  <Checkbox
+                    key={perm}
+                    checked={isChecked(module, perm)}
+                    onChange={() => togglePermission(module, perm)}
+                  >
+                    {perm}
+                  </Checkbox>
+                ))}
+              </div>
             </div>
           ))}
         </div>

@@ -1,15 +1,7 @@
-interface Role {
-  id: number
-  name: string
-  description: string
-  permissions: string[]
-  userCount: number
-  status: string
-  createdDate: string
-}
+import { Role } from '@/services/roleService'
 
 interface RoleDetailsTabProps {
-  role?: Role
+  role: Role
 }
 
 export default function RoleDetailsTab({ role }: RoleDetailsTabProps) {
@@ -17,26 +9,35 @@ export default function RoleDetailsTab({ role }: RoleDetailsTabProps) {
     return <div className="text-center py-8">Role not found</div>
   }
 
-  // Map permissions to modules (dummy mapping for demo)
-  const getModulesFromPermissions = (permissions: string[]) => {
-    const moduleMap: { [key: string]: string[] } = {
-      'Projects': ['Create', 'Read', 'Update', 'Delete'],
-      'Tasks': ['Create', 'Read', 'Update'],
-      'Users': ['Read', 'Update', 'Manage Users'],
-      'Settings': ['Create', 'Read', 'Update', 'Delete'],
-    }
+  // Get permission sections that have permissions assigned
+  const getPermissionSections = () => {
+    const sections = [
+      { name: 'Projects', permissions: role.permissions.projects },
+      { name: 'Task', permissions: role.permissions.task },
+      { name: 'Users', permissions: role.permissions.users },
+      { name: 'Settings', permissions: role.permissions.settings }
+    ]
 
-    const modules: string[] = []
-    Object.keys(moduleMap).forEach(module => {
-      const modulePerms = moduleMap[module]
-      if (permissions.some(p => modulePerms.includes(p))) {
-        modules.push(module)
-      }
-    })
-    return modules
+    return sections.filter(section => section.permissions.length > 0)
   }
 
-  const assignedModules = getModulesFromPermissions(role.permissions)
+  const permissionSections = getPermissionSections()
+
+  // Calculate total permissions count
+  const totalPermissions = Object.values(role.permissions).reduce(
+    (total, sectionPerms) => total + sectionPerms.length,
+    0
+  )
+
+  // Format created date
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Date not available'
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  }
 
   return (
     <div className="grid grid-cols-3 gap-6">
@@ -45,18 +46,18 @@ export default function RoleDetailsTab({ role }: RoleDetailsTabProps) {
         <div className="bg-white rounded-2xl p-6 border">
           <h2 className="text-lg font-semibold text-secondary">{role.name}</h2>
           <p className="text-sm text-gray-500">
-            {role.description} • Created on {role.createdDate}
+            {role.description || 'No description'} • Created on {formatDate(role.createdAt)}
           </p>
 
           <div className="mt-4">
-            <p className="text-sm font-medium mb-2">Assigned Modules</p>
+            <p className="text-sm font-medium mb-2">Permission Sections</p>
             <div className="flex gap-2 flex-wrap">
-              {assignedModules.map(m => (
+              {permissionSections.map(section => (
                 <span
-                  key={m}
+                  key={section.name}
                   className="px-3 py-1 rounded-full bg-gray-100 text-xs"
                 >
-                  {m}
+                  {section.name}
                 </span>
               ))}
             </div>
@@ -66,26 +67,25 @@ export default function RoleDetailsTab({ role }: RoleDetailsTabProps) {
         <div className="bg-white rounded-2xl p-6 border">
           <h3 className="text-sm font-semibold mb-4">Role Permissions</h3>
 
-          {[
-            {
-              title: 'General',
-              perms: role.permissions
-            },
-          ].map(section => (
-            <div key={section.title} className="mb-4">
-              <p className="text-sm font-medium mb-2">{section.title}</p>
-              <div className="flex gap-2 flex-wrap">
-                {section.perms.map(p => (
-                  <span
-                    key={p}
-                    className="px-3 py-1 rounded-full bg-gray-100 text-xs"
-                  >
-                    {p}
-                  </span>
-                ))}
+          {permissionSections.length === 0 ? (
+            <p className="text-sm text-gray-500">No permissions assigned</p>
+          ) : (
+            permissionSections.map(section => (
+              <div key={section.name} className="mb-4 last:mb-0">
+                <p className="text-sm font-medium mb-2">{section.name}</p>
+                <div className="flex gap-2 flex-wrap">
+                  {section.permissions.map(permission => (
+                    <span
+                      key={permission}
+                      className="px-3 py-1 rounded-full bg-gray-100 text-xs"
+                    >
+                      {permission}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -110,7 +110,7 @@ export default function RoleDetailsTab({ role }: RoleDetailsTabProps) {
                 </div>
                 <div className="text-sm">
                   <p className="font-medium text-secondary">Role Created</p>
-                  <p className="text-gray-500">Created on {role.createdDate}</p>
+                  <p className="text-gray-500">Created on {formatDate(role.createdAt)}</p>
                 </div>
               </div>
 
@@ -122,12 +122,12 @@ export default function RoleDetailsTab({ role }: RoleDetailsTabProps) {
                   </div>
                 </div>
                 <div className="text-sm">
-                  <p className="font-medium">Status: {role.status}</p>
-                  <p className="text-gray-500">Assigned to {role.userCount} users</p>
+                  <p className="font-medium">Status: Active</p>
+                  <p className="text-gray-500">Assigned to 0 users</p>
                 </div>
               </div>
 
-              {/* Step 3: Permissions Assigned (if applicable) */}
+              {/* Step 3: Permissions Assigned */}
               <div className="flex items-start gap-4">
                 <div className="relative z-10 flex-shrink-0">
                  <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center">
@@ -136,7 +136,7 @@ export default function RoleDetailsTab({ role }: RoleDetailsTabProps) {
                 </div>
                 <div className="text-sm">
                   <p className="font-medium text-blue-600">Permissions Assigned</p>
-                  <p className="text-gray-500">{role.permissions.length} permissions granted</p>
+                  <p className="text-gray-500">{totalPermissions} permissions granted</p>
                 </div>
               </div>
             </div>

@@ -15,6 +15,7 @@ interface UseDepartmentsOptions {
   searchString?: string
   organizationId?: string
   autoFetch?: boolean
+  fetchAll?: boolean
 }
 
 interface UseDepartmentsReturn {
@@ -29,7 +30,8 @@ interface UseDepartmentsReturn {
 }
 
 export const useDepartments = (options: UseDepartmentsOptions = {}): UseDepartmentsReturn => {
-  const { page = 1, pageSize = 10, searchString, organizationId, autoFetch = true } = options
+  const { page = 1, pageSize = 10, searchString, organizationId, autoFetch = true, fetchAll = false } = options
+  const effectivePageSize = fetchAll ? 1000 : pageSize
 
   const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(false)
@@ -41,16 +43,22 @@ export const useDepartments = (options: UseDepartmentsOptions = {}): UseDepartme
       setLoading(true)
       setError(null)
 
-      const params = {
-        page,
-        page_size: pageSize,
-        ...(searchString && { search_string: searchString }),
-        ...(organizationId && { organization_id: organizationId })
-      }
+      if (fetchAll) {
+        const allDepartments = await departmentApi.getAllDepartments()
+        setDepartments(allDepartments)
+        setPagination(null)
+      } else {
+        const params = {
+          page,
+          page_size: effectivePageSize,
+          ...(searchString && { search_string: searchString }),
+          ...(organizationId && { organization_id: organizationId })
+        }
 
-      const response = await departmentApi.getDepartments(params)
-      setDepartments(response.records)
-      setPagination(response.pagination_info)
+        const response = await departmentApi.getDepartments(params)
+        setDepartments(response.records)
+        setPagination(response.pagination_info)
+      }
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch departments'
       setError(errorMessage)
@@ -58,7 +66,7 @@ export const useDepartments = (options: UseDepartmentsOptions = {}): UseDepartme
     } finally {
       setLoading(false)
     }
-  }, [page, pageSize, searchString, organizationId])
+  }, [page, effectivePageSize, searchString, organizationId, fetchAll])
 
   const refetch = useCallback(async () => {
     await fetchDepartments()

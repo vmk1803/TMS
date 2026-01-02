@@ -43,7 +43,7 @@ export const useOrganizations = (options: UseOrganizationsOptions = {}): UseOrga
 
       if (fetchAll) {
         // Fetch all organizations without pagination
-        const allOrganizations = await organizationApi.getMyOrganizations()
+        const allOrganizations = await organizationApi.getAllOrganizations()
         setOrganizations(allOrganizations)
         setPagination(null) // No pagination info for fetchAll
       } else {

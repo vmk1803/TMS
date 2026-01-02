@@ -101,6 +101,12 @@ export const departmentApi = {
     return response.data.data
   },
 
+  // Get all departments without pagination
+  getAllDepartments: async (): Promise<Department[]> => {
+    const response = await api.get('/user-management/departments/all')
+    return response.data.data || response.data
+  },
+
   // Delete department
   deleteDepartment: async (id: string): Promise<void> => {
     await api.delete(`/user-management/departments/${id}`)

@@ -43,7 +43,7 @@ export const useLocations = (options: UseLocationsOptions = {}): UseLocationsRet
 
       if (fetchAll) {
         // Fetch all locations without pagination
-        const allLocations = await locationApi.getMyLocations()
+        const allLocations = await locationApi.getAllLocations()
         setLocations(allLocations)
         setPagination(null) // No pagination info for fetchAll
       } else {

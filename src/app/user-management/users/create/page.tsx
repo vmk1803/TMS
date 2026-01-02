@@ -1,8 +1,15 @@
 'use client'
 
 import { ChevronLeft, Trash2Icon, Plus } from 'lucide-react'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { message } from 'antd'
+import { useRoles } from '@/hooks/useRoles'
+import { useDepartments } from '@/hooks/useDepartments'
+import { useOrganizations } from '@/hooks/useOrganizations'
+import { useLocations } from '@/hooks/useLocations'
+import { useUsers } from '@/hooks/useUsers'
+import { userApi } from '@/services/userService'
 
 // Dummy data options - key-value pairs for easy API integration
 const genderOptions = [
@@ -11,38 +18,7 @@ const genderOptions = [
   { key: 'other', value: 'Other' },
 ]
 
-const roleOptions = [
-  { key: 'admin', value: 'Admin' },
-  { key: 'manager', value: 'Manager' },
-  { key: 'user', value: 'User' },
-]
-
-const departmentOptions = [
-  { key: 'operations', value: 'Operations' },
-  { key: 'marketing', value: 'Marketing' },
-  { key: 'sales', value: 'Sales' },
-  { key: 'engineering', value: 'Engineering' },
-]
-
-const companyOptions = [
-  { key: 'gold-wealth', value: 'Gold Wealth Partners' },
-  { key: 'creative-minds', value: 'Creative Minds Inc.' },
-  { key: 'bright-futures', value: 'Bright Futures LLC' },
-  { key: 'tech-innovators', value: 'Tech Innovators Co.' },
-]
-
-const locationOptions = [
-  { key: 'new-york', value: 'New York' },
-  { key: 'san-francisco', value: 'San Francisco' },
-  { key: 'london', value: 'London' },
-  { key: 'tokyo', value: 'Tokyo' },
-]
-
-const reportingManagerOptions = [
-  { key: 'sarah-johnson', value: 'Sarah Johnson' },
-  { key: 'emily-davis', value: 'Emily Davis' },
-  { key: 'michael-smith', value: 'Michael Smith' },
-]
+// Dynamic options for roles, departments, organizations, locations, and reporting managers will be loaded from API
 
 const passwordSettingsOptions = [
   { key: 'auto-generate', value: 'Auto Generate' },
@@ -63,24 +39,69 @@ const assetOptions = [
 
 export default function CreateUserPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const userId = searchParams.get('userId')
+  const isEdit = Boolean(userId)
+
+  // Dropdown data
+  const { roles, loading: rolesLoading } = useRoles({ fetchAll: true })
+  const { departments, loading: departmentsLoading } = useDepartments({ fetchAll: true })
+  const { organizations, loading: organizationsLoading } = useOrganizations({ fetchAll: true })
+  const { locations, loading: locationsLoading } = useLocations({ fetchAll: true })
+
+  // Reporting managers: all users
+  const { users: reportingManagers } = useUsers({ fetchAll: true, autoFetch: true })
+
+  // Fetch user for edit
+  useEffect(() => {
+    if (isEdit && userId) {
+      userApi.getUserById(userId).then((user) => {
+        setFormData({
+          firstName: user.firstName || '',
+          lastName: user.lastName || '',
+          email: user.email || '',
+          mobile: user.mobileNumber || '',
+          gender: user.gender || '',
+          organizationDetails: {
+            role: user.organizationDetails?.role?._id || '',
+            department: user.organizationDetails?.department?._id || '',
+            organization: user.organizationDetails?.organization?._id || '',
+            location: user.organizationDetails?.location?.id || '',
+            reportingManager: user.organizationDetails?.reportingManager?._id || '',
+          },
+          passwordSettings: user.passwordSetting || '',
+          password: '',
+          active: user.active,
+          assignAsset: (user.assets && user.assets.length > 0) || false,
+          assets: user.assets?.length
+            ? user.assets.map((a: any) => ({ assetType: a.assetName, assetId: a.assetId }))
+            : [{ assetType: '', assetId: '' }],
+        })
+      })
+    }
+  }, [isEdit, userId])
+
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     mobile: '',
     gender: '',
-    role: '',
-    department: '',
-    company: '',
-    location: '',
-    reportingManager: '',
+    organizationDetails: {
+      role: '',
+      department: '',
+      organization: '',
+      location: '',
+      reportingManager: '',
+    },
     passwordSettings: '',
-    userStatus: '',
+    password: '',
+    active: true,
     assignAsset: false,
     assets: [{ assetType: '', assetId: '' }],
   })
-
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(false)
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -120,12 +141,23 @@ export default function CreateUserPage() {
 
     // Required fields validation
     const requiredFields = [
-      'firstName', 'lastName', 'email', 'mobile', 'role', 'department', 'company', 'location', 'passwordSettings', 'userStatus'
+      'firstName', 'lastName', 'email', 'mobile', 'passwordSettings'
     ]
 
     requiredFields.forEach(field => {
       if (!formData[field as keyof typeof formData]) {
         newErrors[field] = 'This field is required'
+      }
+    })
+
+    // Organization details required fields
+    const orgDetailsRequiredFields: (keyof typeof formData.organizationDetails)[] = [
+      'role', 'department', 'organization', 'location'
+    ]
+
+    orgDetailsRequiredFields.forEach(field => {
+      if (!formData.organizationDetails[field]) {
+        newErrors[`org-${String(field)}`] = 'This field is required'
       }
     })
 
@@ -137,6 +169,11 @@ export default function CreateUserPage() {
     // Mobile validation (basic)
     if (formData.mobile && !/^\+?\d{10,15}$/.test(formData.mobile)) {
       newErrors.mobile = 'Please enter a valid mobile number'
+    }
+
+    // Password validation when manual setting
+    if (formData.passwordSettings === 'manual' && !formData.password) {
+      newErrors.password = 'Password is required when manual setting is selected'
     }
 
     // Asset validation if assigned
@@ -152,18 +189,58 @@ export default function CreateUserPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSave = () => {
-    if (validateForm()) {
-      // Here you would typically make an API call
-      console.log('Form data:', formData)
-      // On success, redirect
+  const handleSave = async () => {
+    if (!validateForm()) return
+    setLoading(true)
+    try {
+      // Prepare payload
+      const payload: any = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        mobileNumber: formData.mobile,
+        gender: formData.gender,
+        organizationDetails: {
+          role: formData.organizationDetails.role,
+          department: formData.organizationDetails.department,
+          organization: formData.organizationDetails.organization,
+          location: formData.organizationDetails.location,
+          reportingManager: formData.organizationDetails.reportingManager || undefined,
+        },
+        passwordSetting: formData.passwordSettings,
+        active: formData.active,
+        assets: formData.assignAsset
+          ? formData.assets.filter(a => a.assetType).map(a => ({ assetId: a.assetId, assetName: a.assetType }))
+          : [],
+      }
+      if (formData.passwordSettings === 'manual' && formData.password) {
+        payload.password = formData.password
+      }
+      if (isEdit && userId) {
+        await userApi.updateUser(userId, payload)
+        message.success('User updated successfully')
+      } else {
+        await userApi.createUser(payload)
+        message.success('User created successfully')
+      }
       router.push('/user-management/users')
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || 'Failed to save user')
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleCancel = () => {
     router.push('/user-management/users')
   }
+  console.log(formData, 'formData');
+  // Dropdown options mapping
+  const roleOptions = roles.map((r: any) => ({ key: r._id, value: r.name }))
+  const departmentOptions = departments.map((d: any) => ({ key: d._id, value: d.name }))
+  const companyOptions = organizations.map((o: any) => ({ key: o._id, value: o.organizationName }))
+  const locationOptions = locations.map((l: any) => ({ key: l.id, value: `${l.city}, ${l.country}` }))
+  const reportingManagerOptions = reportingManagers.map((u: any) => ({ key: u._id, value: `${u.firstName} ${u.lastName}` }))
 
   return (
     <div className="p-6 bg-[#F7F9FB] min-h-screen">
@@ -194,17 +271,20 @@ export default function CreateUserPage() {
 
       {/* Organizational Details */}
       <Section title="Organizational Details">
-        <Select label="Role*" options={roleOptions} value={formData.role} onChange={(value) => handleInputChange('role', value)} error={errors.role} />
-        <Select label="Department*" options={departmentOptions} value={formData.department} onChange={(value) => handleInputChange('department', value)} error={errors.department} />
-        <Select label="Company*" options={companyOptions} value={formData.company} onChange={(value) => handleInputChange('company', value)} error={errors.company} />
-        <Select label="Location*" options={locationOptions} value={formData.location} onChange={(value) => handleInputChange('location', value)} error={errors.location} />
-        <Select label="Reporting Manager" options={reportingManagerOptions} value={formData.reportingManager} onChange={(value) => handleInputChange('reportingManager', value)} />
+        <Select label="Role*" options={roleOptions} value={formData.organizationDetails.role} onChange={(value) => setFormData(prev => ({ ...prev, organizationDetails: { ...prev.organizationDetails, role: value } }))} error={errors['org-role']} />
+        <Select label="Department*" options={departmentOptions} value={formData.organizationDetails.department} onChange={(value) => setFormData(prev => ({ ...prev, organizationDetails: { ...prev.organizationDetails, department: value } }))} error={errors['org-department']} />
+        <Select label="Company*" options={companyOptions} value={formData.organizationDetails.organization} onChange={(value) => setFormData(prev => ({ ...prev, organizationDetails: { ...prev.organizationDetails, organization: value } }))} error={errors['org-organization']} />
+        <Select label="Location*" options={locationOptions} value={formData.organizationDetails.location} onChange={(value) => setFormData(prev => ({ ...prev, organizationDetails: { ...prev.organizationDetails, location: value } }))} error={errors['org-location']} />
+        <Select label="Reporting Manager" options={reportingManagerOptions} value={formData.organizationDetails.reportingManager} onChange={(value) => setFormData(prev => ({ ...prev, organizationDetails: { ...prev.organizationDetails, reportingManager: value } }))} />
       </Section>
 
       {/* Account Settings */}
       <Section title="Account Settings">
         <Select label="Password Settings*" options={passwordSettingsOptions} value={formData.passwordSettings} onChange={(value) => handleInputChange('passwordSettings', value)} error={errors.passwordSettings} />
-        <Select label="User Status*" options={userStatusOptions} value={formData.userStatus} onChange={(value) => handleInputChange('userStatus', value)} error={errors.userStatus} />
+        {formData.passwordSettings === 'manual' && (
+          <Input label="Password*" placeholder="Enter Password" value={formData.password} onChange={(value) => handleInputChange('password', value)} error={errors.password} />
+        )}
+        <Select label="User Status*" options={userStatusOptions} value={formData.active ? 'active' : 'inactive'} onChange={(value) => handleInputChange('active', value === 'active')} />
       </Section>
 
       {/* Asset Assignment */}

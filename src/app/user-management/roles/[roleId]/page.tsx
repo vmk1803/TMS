@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Button } from 'antd'
+import { Button, message } from 'antd'
 import { ChevronLeft } from 'lucide-react'
+import { useRole } from '@/hooks/useRoles'
 import RoleDetailsTab from './RoleDetailsTab'
 import AssignedUsersTab from './AssignedUsersTab'
 import AssignedGroupsTab from './AssignedGroupsTab'
@@ -14,52 +15,19 @@ const TABS = [
   { key: 'groups', label: 'Assigned Groups (4)' },
 ]
 
-// Dummy roles data (same as in roles page)
-const roles = [
-  {
-    id: 1,
-    name: 'Admin',
-    description: 'Full access to all system features and settings',
-    permissions: ['Create', 'Read', 'Update', 'Delete', 'Manage Users'],
-    userCount: 5,
-    status: 'Active',
-    createdDate: '2023-01-15',
-  },
-  {
-    id: 2,
-    name: 'Manager',
-    description: 'Manage teams and projects with limited admin access',
-    permissions: ['Create', 'Read', 'Update', 'Manage Teams'],
-    userCount: 12,
-    status: 'Active',
-    createdDate: '2023-02-20',
-  },
-  {
-    id: 3,
-    name: 'User',
-    description: 'Standard user with basic access to assigned tasks',
-    permissions: ['Read', 'Update'],
-    userCount: 45,
-    status: 'Active',
-    createdDate: '2023-03-10',
-  },
-  {
-    id: 4,
-    name: 'Viewer',
-    description: 'Read-only access to projects and tasks',
-    permissions: ['Read'],
-    userCount: 8,
-    status: 'Inactive',
-    createdDate: '2023-04-05',
-  },
-]
-
 export default function RoleDetailsPage() {
   const [activeTab, setActiveTab] = useState('details')
   const params = useParams()
   const router = useRouter()
-  const roleId = parseInt(params.roleId as string)
-  const role = roles.find(r => r.id === roleId)
+  const roleId = params.roleId as string
+
+  // Use the useRole hook to fetch role data
+  const { role, loading, error } = useRole(roleId)
+
+  // Show error message if failed to load role
+  if (error) {
+    message.error('Failed to load role details')
+  }
 
   const handleBack = () => {
     router.push('/user-management/roles')
@@ -67,6 +35,34 @@ export default function RoleDetailsPage() {
 
   const handleEdit = () => {
     router.push(`/user-management/roles/create?roleId=${roleId}`)
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="bg-[#F7F9FB] min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error || !role) {
+    return (
+      <div className="bg-[#F7F9FB] min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            {error ? 'Error Loading Role' : 'Role Not Found'}
+          </h2>
+          <p className="text-gray-500 mb-4">
+            {error || 'The role you are looking for does not exist.'}
+          </p>
+          <Button onClick={handleBack} className="rounded-xl">
+            Back to Roles
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (

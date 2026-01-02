@@ -31,6 +31,9 @@ const nextConfig = {
         } : false,
     },
 
+    // Transpile packages
+    transpilePackages: ['antd'],
+
     // Enable experimental features for better performance
     experimental: {
         optimizePackageImports: ['recharts', 'leaflet', 'react-leaflet', 'lucide-react'],

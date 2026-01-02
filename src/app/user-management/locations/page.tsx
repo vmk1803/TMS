@@ -44,11 +44,8 @@ export default function LocationsPage() {
     pageSize: itemsPerPage
   })
 
-  // Transform locations to add computed fields
-  const locations = rawLocations.map(location => ({
-    ...location,
-    users: 0, // Placeholder for user count
-  }))
+  // Locations now include userCount from the API
+  const locations = rawLocations
 
   /* ----------------------------- TABLE COLUMNS ----------------------------- */
   const columns = [
@@ -78,8 +75,9 @@ export default function LocationsPage() {
     },
     {
       title: 'No.of Users',
-      dataIndex: 'users',
+      dataIndex: 'userCount',
       key: 'users',
+      render: (count: number) => count || 0,
     },
     {
       title: 'Time Zone',

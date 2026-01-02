@@ -80,6 +80,12 @@ export const organizationApi = {
     return response.data.data
   },
 
+  // Get all organizations without pagination
+  getAllOrganizations: async (): Promise<Organization[]> => {
+    const response = await api.get('/user-management/organizations/all')
+    return response.data.data || response.data
+  },
+
   // Create organization
   createOrganization: async (data: CreateOrganizationData): Promise<CreateOrganizationResponse> => {
     const response = await api.post('/user-management/organizations', data)
