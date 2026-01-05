@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useLocations } from '@/hooks/useLocations'
+import { useOrganizations } from '@/hooks/useOrganizations'
 import { useDebouncedSearch } from '@/hooks/useDebouncedSearch'
 
 // Lazy load heavy components
@@ -23,6 +24,7 @@ export default function LocationsPage() {
   const [locationToDelete, setLocationToDelete] = useState<any>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState<string>('')
 
   // Use the locations hook for all data management
   const {
@@ -32,6 +34,12 @@ export default function LocationsPage() {
     isDebouncing
   } = useDebouncedSearch({ debounceDelay: 1000 })
 
+  // Fetch organizations for the dropdown
+  const { organizations, loading: organizationsLoading } = useOrganizations({
+    fetchAll: true,
+    autoFetch: true
+  })
+
   const {
     locations: rawLocations,
     loading,
@@ -40,6 +48,7 @@ export default function LocationsPage() {
   } = useLocations({
     autoFetch: true,
     searchString: debouncedSearchQuery,
+    organizationId: selectedOrganizationId || undefined,
     page: currentPage,
     pageSize: itemsPerPage
   })
@@ -87,19 +96,23 @@ export default function LocationsPage() {
   ]
 
   /* -------------------------------- Filters -------------------------------- */
+  const organizationItems = [
+    { key: '', label: 'All Companies' },
+    ...(organizations?.map(org => ({
+      key: org._id,
+      label: org.organizationName
+    })) || [])
+  ]
+
   const filters = {
     searchPlaceholder: 'Search locations',
     dropdowns: [
       {
         label: 'All Companies',
-        items: [
-          { key: 'all', label: 'All Companies' },
-          { key: 'nimbus', label: 'Nimbus Capital' },
-          { key: 'grey', label: 'Grey Tech Solutions' },
-        ],
+        items: organizationItems,
         onClick: ({ key }: { key: string }) => {
-          // Handle company filter change
-          console.log('Selected company:', key)
+          setSelectedOrganizationId(key)
+          setCurrentPage(1) // Reset to first page when changing filter
         }
       },
     ],

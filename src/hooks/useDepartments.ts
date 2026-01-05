@@ -14,6 +14,8 @@ interface UseDepartmentsOptions {
   pageSize?: number
   searchString?: string
   organizationId?: string
+  departmentId?: string
+  status?: string
   autoFetch?: boolean
   fetchAll?: boolean
 }
@@ -30,7 +32,7 @@ interface UseDepartmentsReturn {
 }
 
 export const useDepartments = (options: UseDepartmentsOptions = {}): UseDepartmentsReturn => {
-  const { page = 1, pageSize = 10, searchString, organizationId, autoFetch = true, fetchAll = false } = options
+  const { page = 1, pageSize = 10, searchString, organizationId, departmentId, status, autoFetch = true, fetchAll = false } = options
   const effectivePageSize = fetchAll ? 1000 : pageSize
 
   const [departments, setDepartments] = useState<Department[]>([])
@@ -52,7 +54,9 @@ export const useDepartments = (options: UseDepartmentsOptions = {}): UseDepartme
           page,
           page_size: effectivePageSize,
           ...(searchString && { search_string: searchString }),
-          ...(organizationId && { organization_id: organizationId })
+          ...(organizationId && { organization_id: organizationId }),
+          ...(departmentId && { department_id: departmentId }),
+          ...(status && { status })
         }
 
         const response = await departmentApi.getDepartments(params)
@@ -66,7 +70,7 @@ export const useDepartments = (options: UseDepartmentsOptions = {}): UseDepartme
     } finally {
       setLoading(false)
     }
-  }, [page, effectivePageSize, searchString, organizationId, fetchAll])
+  }, [page, effectivePageSize, searchString, organizationId, departmentId, status, fetchAll])
 
   const refetch = useCallback(async () => {
     await fetchDepartments()

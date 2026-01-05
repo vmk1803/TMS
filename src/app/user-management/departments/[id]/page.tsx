@@ -3,12 +3,13 @@
 import { useParams, useRouter } from 'next/navigation'
 import TabContainer from '@/components/common/TabContainer'
 import DepartmentDetailsTab from './DepartmentDetailsTab'
-import AssignedUsersTab from '../../roles/[roleId]/AssignedUsersTab'
+import AssignedUsersTab from './AssignedUsersTab'
 import { useDepartment } from '@/hooks/useDepartments'
+import { useUsers } from '@/hooks/useUsers'
 
-const getTabs = (department: any) => [
+const getTabs = (userCount: number) => [
   { key: 'details', label: 'Department Details' },
-  { key: 'users', label: `Assigned Users (${department?.usersCount || 0})` },
+  { key: 'users', label: `Assigned Users (${userCount})` },
 ]
 
 export default function DepartmentDetailsPage() {
@@ -16,7 +17,8 @@ export default function DepartmentDetailsPage() {
   const router = useRouter()
   const departmentId = params.id as string
 
-  const { department, loading, error } = useDepartment(departmentId)
+  const { department, loading: departmentLoading, error: departmentError } = useDepartment(departmentId)
+  const { users, loading: usersLoading } = useUsers({ departmentId })
 
   const handleEdit = () => {
     router.push(`/user-management/departments/create?departmentId=${departmentId}`)
@@ -57,12 +59,12 @@ export default function DepartmentDetailsPage() {
     logs: logs,
   } : null
 
-  if (loading) {
+  if (departmentLoading) {
     return <div className="text-center py-8">Loading department...</div>
   }
 
-  if (error) {
-    return <div className="text-center py-8 text-red-500">Error: {error}</div>
+  if (departmentError) {
+    return <div className="text-center py-8 text-red-500">Error: {departmentError}</div>
   }
 
   if (!departmentData) {
@@ -71,7 +73,7 @@ export default function DepartmentDetailsPage() {
 
   return (
     <TabContainer
-      tabs={getTabs(departmentData)}
+      tabs={getTabs(users.length)}
       backRoute="/user-management/departments"
       editRoute={`/user-management/departments/create?departmentId=${departmentId}`}
     >
@@ -80,7 +82,7 @@ export default function DepartmentDetailsPage() {
           case 'details':
             return <DepartmentDetailsTab department={departmentData} onEdit={handleEdit} />
           case 'users':
-            return <AssignedUsersTab />
+            return <AssignedUsersTab users={users} loading={usersLoading} error={null} />
           default:
             return <DepartmentDetailsTab department={departmentData} onEdit={handleEdit} />
         }

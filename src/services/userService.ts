@@ -49,6 +49,7 @@ export interface User {
   // Timestamps
   createdAt?: string
   updatedAt?: string
+  lastLogin?: string
 }
 
 export interface PaginatedUsersResponse {
@@ -87,6 +88,12 @@ export const userApi = {
   // Get all users without pagination
   getAllUsers: async (): Promise<User[]> => {
     const response = await api.get('/user-management/users/all')
+    return response.data.data || response.data
+  },
+
+  // Get users by organization
+  getUsersByOrganization: async (organizationId: string): Promise<User[]> => {
+    const response = await api.get(`/user-management/users/organization/${organizationId}`)
     return response.data.data || response.data
   },
 

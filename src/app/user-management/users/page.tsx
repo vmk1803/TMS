@@ -102,7 +102,7 @@ export default function UsersPage() {
     company: user.organizationDetails?.organization?.organizationName || 'N/A',
     role: user.organizationDetails?.role?.name || user.role || 'N/A',
     department: user.organizationDetails?.department?.name || 'N/A',
-    lastLogin: '-',
+    lastLogin: user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never',
     status: user.active ? 'Active' : 'Inactive',
   }))
 

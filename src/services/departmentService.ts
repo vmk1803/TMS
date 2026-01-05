@@ -60,6 +60,8 @@ export const departmentApi = {
       page_size?: number
       search_string?: string
       organization_id?: string
+      department_id?: string
+      status?: string
     },
     options?: { signal?: AbortSignal }
   ): Promise<PaginatedDepartmentsResponse> => {

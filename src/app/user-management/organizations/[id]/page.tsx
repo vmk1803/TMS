@@ -3,7 +3,7 @@
 import { useParams, useRouter } from 'next/navigation'
 import TabContainer from '@/components/common/TabContainer'
 import CompanyDetailsTab from './CompanyDetailsTab'
-import AssignedUsersTab from '../../roles/[roleId]/AssignedUsersTab'
+import AssignedUsersTab from './AssignedUsersTab'
 import { useOrganization } from '@/hooks/useOrganizations'
 
 const tabs = [
@@ -48,7 +48,7 @@ export default function OrganizationDetailsPage() {
           case 'details':
             return <CompanyDetailsTab company={organizationWithLogs} />
           case 'users':
-            return <AssignedUsersTab />
+            return <AssignedUsersTab organizationId={organizationId} />
           default:
             return <CompanyDetailsTab company={organizationWithLogs} />
         }

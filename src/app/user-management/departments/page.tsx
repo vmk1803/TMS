@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useDepartments } from '@/hooks/useDepartments'
+import { useOrganizations } from '@/hooks/useOrganizations'
 import { useDebouncedSearch } from '@/hooks/useDebouncedSearch'
 import { Tag } from 'antd'
 
@@ -25,6 +26,11 @@ export default function DepartmentsListPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
+  // Filter states
+  const [selectedOrganization, setSelectedOrganization] = useState<string | null>(null)
+  const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState<string | null>(null)
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null)
+
   // Simple debounced search
   const {
     searchQuery,
@@ -33,7 +39,13 @@ export default function DepartmentsListPage() {
     isDebouncing
   } = useDebouncedSearch({ debounceDelay: 1000 })
 
-  // Use the departments hook for all data management
+  // Fetch all organizations for dropdown
+  const { organizations } = useOrganizations({ fetchAll: true, autoFetch: true })
+
+  // Fetch all departments for dropdown
+  const { departments: allDepartments } = useDepartments({ fetchAll: true, autoFetch: true })
+
+  // Use the departments hook for main list with filters
   const {
     departments,
     loading,
@@ -42,6 +54,9 @@ export default function DepartmentsListPage() {
   } = useDepartments({
     autoFetch: true,
     searchString: debouncedSearchQuery,
+    organizationId: selectedOrganization || undefined,
+    departmentId: selectedDepartmentFilter || undefined,
+    status: selectedStatus || undefined,
     page: currentPage,
     pageSize: itemsPerPage
   })
@@ -94,20 +109,44 @@ export default function DepartmentsListPage() {
     searchPlaceholder: 'Search departments',
     dropdowns: [
       {
-        label: 'All Departments',
-        items: [{ key: 'all', label: 'All Departments' }],
+        label: selectedDepartmentFilter
+          ? allDepartments.find(d => d._id === selectedDepartmentFilter)?.name || 'All Departments'
+          : 'All Departments',
+        items: [
+          { key: 'all', label: 'All Departments' },
+          ...allDepartments.map(d => ({ key: d._id, label: d.name }))
+        ],
+        onClick: (item: { key: string }) => {
+          setSelectedDepartmentFilter(item.key === 'all' ? null : item.key)
+          setCurrentPage(1) // Reset to first page
+        }
       },
       {
-        label: 'All Companies',
-        items: [{ key: 'all', label: 'All Companies' }],
+        label: selectedOrganization
+          ? organizations.find(o => o._id === selectedOrganization)?.organizationName || 'All Companies'
+          : 'All Companies',
+        items: [
+          { key: 'all', label: 'All Companies' },
+          ...organizations.map(o => ({ key: o._id, label: o.organizationName }))
+        ],
+        onClick: (item: { key: string }) => {
+          setSelectedOrganization(item.key === 'all' ? null : item.key)
+          setCurrentPage(1) // Reset to first page
+        }
       },
       {
-        label: 'All Status',
+        label: selectedStatus
+          ? selectedStatus.charAt(0).toUpperCase() + selectedStatus.slice(1)
+          : 'All Status',
         items: [
           { key: 'all', label: 'All Status' },
           { key: 'active', label: 'Active' },
           { key: 'inactive', label: 'Inactive' },
         ],
+        onClick: (item: { key: string }) => {
+          setSelectedStatus(item.key === 'all' ? null : item.key)
+          setCurrentPage(1) // Reset to first page
+        }
       },
     ],
   }
@@ -152,6 +191,14 @@ export default function DepartmentsListPage() {
   const handlePageSizeChange = (size: number) => {
     setItemsPerPage(size)
     setCurrentPage(1) // Reset to first page when changing page size
+  }
+
+  // Reset filters when needed
+  const resetFilters = () => {
+    setSelectedOrganization(null)
+    setSelectedDepartmentFilter(null)
+    setSelectedStatus(null)
+    setCurrentPage(1)
   }
 
   return (

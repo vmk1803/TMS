@@ -1,22 +1,31 @@
 interface Group {
-  id: number
+  id: string
+  _id: string
   name: string
-  manager: string
-  members: string
-  department: string
-  type: string
-  modified: string
+  department: {
+    _id: string
+    name: string
+  }
+  manager: {
+    _id: string
+    firstName: string
+    lastName: string
+  }
+  members: Array<{
+    _id: string
+    firstName: string
+    lastName: string
+  }>
+  description?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 interface GroupDetailsTabProps {
-  group?: Group
+  group: Group
 }
 
 export default function GroupDetailsTab({ group }: GroupDetailsTabProps) {
-  if (!group) {
-    return <div className="text-center py-8">Group not found</div>
-  }
-
   return (
     <div className="grid grid-cols-3 gap-6">
       <div className="col-span-2 bg-white rounded-2xl p-6 border">
@@ -24,21 +33,28 @@ export default function GroupDetailsTab({ group }: GroupDetailsTabProps) {
           {group.name}
         </h2>
         <p className="text-sm text-gray-500 mb-4">
-          {group.type} group managed by {group.manager} with {group.members} members.
+          Task group managed by {group.manager.firstName} {group.manager.lastName} with {group.members.length} members.
         </p>
+
+        {group.description && (
+          <div className="mb-4">
+            <p className="text-sm font-medium mb-2">Description</p>
+            <p className="text-sm text-gray-600">{group.description}</p>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-sm font-medium mb-2">Manager</p>
             <span className="px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700">
-              {group.manager}
+              {group.manager.firstName} {group.manager.lastName}
             </span>
           </div>
 
           <div>
             <p className="text-sm font-medium mb-2">Department</p>
             <span className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-700">
-              {group.department}
+              {group.department.name}
             </span>
           </div>
         </div>
@@ -46,7 +62,7 @@ export default function GroupDetailsTab({ group }: GroupDetailsTabProps) {
         <div className="mt-4">
           <p className="text-sm font-medium mb-2">Group Type</p>
           <span className="px-3 py-1 text-xs rounded-full bg-purple-100 text-purple-700">
-            {group.type}
+            Task
           </span>
         </div>
       </div>
@@ -71,7 +87,9 @@ export default function GroupDetailsTab({ group }: GroupDetailsTabProps) {
                 </div>
                 <div className="text-sm">
                   <p className="font-medium text-secondary">Group Created</p>
-                  <p className="text-gray-500">Created on {group.modified}</p>
+                  <p className="text-gray-500">
+                    Created on {group.createdAt ? new Date(group.createdAt).toLocaleDateString() : 'N/A'}
+                  </p>
                 </div>
               </div>
 
@@ -84,7 +102,9 @@ export default function GroupDetailsTab({ group }: GroupDetailsTabProps) {
                 </div>
                 <div className="text-sm">
                   <p className="font-medium text-blue-600">Manager Assigned</p>
-                  <p className="text-gray-500">{group.manager} assigned as manager</p>
+                  <p className="text-gray-500">
+                    {group.manager.firstName} {group.manager.lastName} assigned as manager
+                  </p>
                 </div>
               </div>
 
@@ -97,7 +117,7 @@ export default function GroupDetailsTab({ group }: GroupDetailsTabProps) {
                 </div>
                 <div className="text-sm">
                   <p className="font-medium text-green-600">Members Added</p>
-                  <p className="text-gray-500">{group.members} members added to group</p>
+                  <p className="text-gray-500">{group.members.length} members added to group</p>
                 </div>
               </div>
             </div>

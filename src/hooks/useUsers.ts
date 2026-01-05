@@ -26,6 +26,63 @@ interface UseUsersReturn {
   deleteUser: (userId: string) => Promise<boolean>
 }
 
+export const useUsersByOrganization = (organizationId: string, options: Omit<UseUsersOptions, 'organizationId' | 'roleId' | 'fetchAll'> = {}): UseUsersReturn => {
+  const { page = 1, pageSize = 10, searchString, departmentId, status, autoFetch = true } = options
+
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const fetchedUsers = await userApi.getUsersByOrganization(organizationId)
+      setUsers(fetchedUsers)
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch organization users'
+      setError(errorMessage)
+      message.error(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }, [organizationId])
+
+  const refetch = useCallback(async () => {
+    await fetchUsers()
+  }, [fetchUsers])
+
+  const deleteUser = useCallback(async (userId: string): Promise<boolean> => {
+    try {
+      await userApi.deleteUser(userId)
+      message.success('User deleted successfully')
+      // Remove user from local state
+      setUsers(prev => prev.filter(user => user._id !== userId))
+      return true
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to delete user'
+      message.error(errorMessage)
+      return false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (autoFetch && organizationId) {
+      fetchUsers()
+    }
+  }, [fetchUsers, autoFetch, organizationId])
+
+  return {
+    users,
+    loading,
+    error,
+    pagination: null, // No pagination for organization users
+    refetch,
+    deleteUser
+  }
+}
+
 export const useUsers = (options: UseUsersOptions = {}): UseUsersReturn => {
   const { page = 1, pageSize = 10, searchString, departmentId, roleId, status, autoFetch = true, fetchAll = false } = options
   const effectivePageSize = fetchAll ? 1000 : pageSize

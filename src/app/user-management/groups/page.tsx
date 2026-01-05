@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { useGroups } from '@/hooks/useGroups'
+import { useDepartments } from '@/hooks/useDepartments'
+import { useDebouncedSearch } from '@/hooks/useDebouncedSearch'
 
 // Lazy load heavy components
 const ListPage = dynamic(() => import('@/components/common/ListPage'), {
@@ -15,39 +18,49 @@ const DeleteConfirmModal = dynamic(() => import('@/components/common/DeleteConfi
   loading: () => null
 })
 
-const groups = [
-  {
-    id: 1,
-    name: 'Support Agents',
-    manager: 'Sarah Johnson',
-    members: '21+',
-    department: 'Support',
-    type: 'Task',
-    modified: '2024-09-01',
-  },
-  {
-    id: 2,
-    name: 'On-call Engineers',
-    manager: 'Michael Smith',
-    members: '260',
-    department: 'Engineering',
-    type: 'Project',
-    modified: '2024-09-01',
-  },
-  {
-    id: 3,
-    name: 'HR Approvers',
-    manager: 'David Brown',
-    members: '192',
-    department: 'HR',
-    type: 'Functional',
-    modified: '2024-09-01',
-  },
-]
-
 export default function GroupsListPage() {
   const router = useRouter()
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [groupToDelete, setGroupToDelete] = useState<any>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
+
+  // Search functionality
+  const {
+    searchQuery,
+    setSearchQuery,
+    debouncedSearchQuery,
+    isDebouncing
+  } = useDebouncedSearch({ debounceDelay: 1000 })
+
+  // Departments for filter dropdown
+  const { departments, loading: departmentsLoading } = useDepartments({ fetchAll: true })
+
+  // Groups data with search and department filtering
+  const {
+    groups: rawGroups,
+    loading,
+    pagination,
+    deleteGroup
+  } = useGroups({
+    autoFetch: true,
+    searchString: debouncedSearchQuery,
+    department: selectedDepartment === 'all' ? undefined : selectedDepartment,
+    page: currentPage,
+    pageSize: itemsPerPage
+  })
+
+  // Format groups data for the table
+  const groups = rawGroups.map(group => ({
+    ...group, // Keep all original properties including id/_id
+    name: group.name,
+    manager: `${group.manager.firstName} ${group.manager.lastName}`,
+    members: group.members.length.toString(),
+    department: group.department.name,
+    type: 'Task', // Default value as requested
+    modified: group.updatedAt ? new Date(group.updatedAt).toLocaleDateString() : 'N/A'
+  }))
 
   const columns = [
     {
@@ -94,7 +107,17 @@ export default function GroupsListPage() {
       },
       {
         label: 'All Departments',
-        items: [{ key: 'all', label: 'All Departments' }]
+        items: [
+          { key: 'all', label: 'All Departments' },
+          ...departments.map(dept => ({
+            key: dept._id,
+            label: dept.name
+          }))
+        ],
+        onClick: ({ key }: { key: string }) => {
+          setSelectedDepartment(key)
+          setCurrentPage(1) // Reset to first page when filtering
+        }
       },
       {
         label: 'All Groups',
@@ -108,15 +131,43 @@ export default function GroupsListPage() {
   }
 
   const handleView = (record: any) => {
-    router.push(`/user-management/groups/${record.id}`)
+    const groupId = record.id || record._id
+    router.push(`/user-management/groups/${groupId}`)
   }
 
   const handleEdit = (record: any) => {
-    router.push(`/user-management/groups/create?groupId=${record.id}`)
+    console.log(record, 'record')
+    const groupId = record.id || record._id
+    router.push(`/user-management/groups/create?groupId=${groupId}`)
   }
 
   const handleDelete = (record: any) => {
+    setGroupToDelete(record)
     setDeleteOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!groupToDelete) return
+
+    const success = await deleteGroup(groupToDelete.id)
+    if (success) {
+      setDeleteOpen(false)
+      setGroupToDelete(null)
+    }
+  }
+
+  const cancelDelete = () => {
+    setDeleteOpen(false)
+    setGroupToDelete(null)
+  }
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  const handlePageSizeChange = (size: number) => {
+    setItemsPerPage(size)
+    setCurrentPage(1) // Reset to first page when changing page size
   }
 
   return (
@@ -131,16 +182,21 @@ export default function GroupsListPage() {
         onView={handleView}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        isSearching={isDebouncing}
+        pagination={pagination}
+        pageSize={itemsPerPage}
+        onPageSizeChange={handlePageSizeChange}
+        onPageChange={handlePageChange}
       />
 
       {/* Delete Modal */}
       <DeleteConfirmModal
         isOpen={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        onConfirm={() => {
-          setDeleteOpen(false)
-          // 🔥 call delete API here
-        }}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        title="Delete Group"
       />
     </>
   )

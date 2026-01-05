@@ -13,6 +13,7 @@ interface UseLocationsOptions {
   page?: number
   pageSize?: number
   searchString?: string
+  organizationId?: string
   autoFetch?: boolean
   fetchAll?: boolean
 }
@@ -29,7 +30,7 @@ interface UseLocationsReturn {
 }
 
 export const useLocations = (options: UseLocationsOptions = {}): UseLocationsReturn => {
-  const { page = 1, pageSize = 10, searchString, autoFetch = true, fetchAll = false } = options
+  const { page = 1, pageSize = 10, searchString, organizationId, autoFetch = true, fetchAll = false } = options
 
   const [locations, setLocations] = useState<Location[]>([])
   const [loading, setLoading] = useState(false)
@@ -51,7 +52,8 @@ export const useLocations = (options: UseLocationsOptions = {}): UseLocationsRet
         const params = {
           page,
           page_size: pageSize,
-          ...(searchString && { search_string: searchString })
+          ...(searchString && { search_string: searchString }),
+          ...(organizationId && { organization_id: organizationId })
         }
 
         const response = await locationApi.getLocations(params)
@@ -65,7 +67,7 @@ export const useLocations = (options: UseLocationsOptions = {}): UseLocationsRet
     } finally {
       setLoading(false)
     }
-  }, [page, pageSize, searchString, fetchAll])
+  }, [page, pageSize, searchString, organizationId, fetchAll])
 
   const refetch = useCallback(async () => {
     await fetchLocations()

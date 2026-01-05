@@ -65,6 +65,7 @@ export const locationApi = {
       page?: number
       page_size?: number
       search_string?: string
+      organization_id?: string
     },
     options?: { signal?: AbortSignal }
   ): Promise<PaginatedLocationsResponse> => {

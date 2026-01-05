@@ -141,7 +141,7 @@ export default function CreateUserPage() {
 
     // Required fields validation
     const requiredFields = [
-      'firstName', 'lastName', 'email', 'mobile', 'passwordSettings'
+      'firstName', 'lastName', 'email', 'mobile', 'gender', 'passwordSettings'
     ]
 
     requiredFields.forEach(field => {
@@ -266,7 +266,7 @@ export default function CreateUserPage() {
         <Input label="Last Name*" placeholder="Enter Last Name" value={formData.lastName} onChange={(value) => handleInputChange('lastName', value)} error={errors.lastName} />
         <Input label="Email ID*" placeholder="Enter Email ID" value={formData.email} onChange={(value) => handleInputChange('email', value)} error={errors.email} />
         <Input label="Mobile Number*" placeholder="Enter Mobile Number" value={formData.mobile} onChange={(value) => handleInputChange('mobile', value)} error={errors.mobile} />
-        <Select label="Gender" options={genderOptions} value={formData.gender} onChange={(value) => handleInputChange('gender', value)} />
+        <Select label="Gender*" options={genderOptions} value={formData.gender} onChange={(value) => handleInputChange('gender', value)} error={errors.gender} />
       </Section>
 
       {/* Organizational Details */}
