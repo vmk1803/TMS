@@ -5,11 +5,7 @@ import TabContainer from '@/components/common/TabContainer'
 import CompanyDetailsTab from './CompanyDetailsTab'
 import AssignedUsersTab from './AssignedUsersTab'
 import { useOrganization } from '@/hooks/useOrganizations'
-
-const tabs = [
-  { key: 'details', label: 'Organization Details' },
-  { key: 'users', label: 'Assigned Users' },
-]
+import { useUsersByOrganization } from '@/hooks/useUsers'
 
 export default function OrganizationDetailsPage() {
   const params = useParams()
@@ -17,6 +13,7 @@ export default function OrganizationDetailsPage() {
   const organizationId = params.id as string
 
   const { organization, loading, error } = useOrganization(organizationId)
+  const { users: organizationUsers, loading: usersLoading, error: usersError } = useUsersByOrganization(organizationId)
 
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>
@@ -37,6 +34,11 @@ export default function OrganizationDetailsPage() {
     ],
   }
 
+  const tabs = [
+    { key: 'details', label: 'Organization Details' },
+    { key: 'users', label: `Assigned Users (${organizationUsers.length})` },
+  ]
+
   return (
     <TabContainer
       tabs={tabs}
@@ -48,7 +50,7 @@ export default function OrganizationDetailsPage() {
           case 'details':
             return <CompanyDetailsTab company={organizationWithLogs} />
           case 'users':
-            return <AssignedUsersTab organizationId={organizationId} />
+            return <AssignedUsersTab organizationId={organizationId} users={organizationUsers} loading={usersLoading} error={usersError} />
           default:
             return <CompanyDetailsTab company={organizationWithLogs} />
         }

@@ -1,4 +1,5 @@
 import api from '@/lib/api'
+import { UserStatistics } from '@/types/user'
 
 // Types
 export interface User {
@@ -120,5 +121,19 @@ export const userApi = {
   // Delete user
   deleteUser: async (id: string): Promise<void> => {
     await api.delete(`/user-management/users/${id}`)
+  },
+
+  // Reset user password
+  resetPassword: async (id: string): Promise<{ id: string }> => {
+    const response = await api.patch(`/user-management/users/${id}/reset-password`)
+    return response.data.data
+  },
+
+  // Get user statistics
+  getUserStatistics: async (options?: { signal?: AbortSignal }): Promise<UserStatistics> => {
+    const response = await api.get('/user-management/statistics', {
+      signal: options?.signal
+    })
+    return response.data.data
   },
 }

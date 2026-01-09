@@ -1,15 +1,20 @@
 import { Table, Input, Dropdown, Button } from 'antd'
 import { Search, ChevronDown, Eye } from 'lucide-react'
 import { useState } from 'react'
-import { useUsersByOrganization } from '@/hooks/useUsers'
+import { useRouter } from 'next/navigation'
 import { useDebouncedSearch } from '@/hooks/useDebouncedSearch'
 import { useDepartments } from '@/hooks/useDepartments'
+import { User } from '@/services/userService'
 
 interface AssignedUsersTabProps {
   organizationId: string
+  users: User[]
+  loading: boolean
+  error: string | null
 }
 
-export default function AssignedUsersTab({ organizationId }: AssignedUsersTabProps) {
+export default function AssignedUsersTab({ organizationId, users, loading: usersLoading, error: usersError }: AssignedUsersTabProps) {
+  const router = useRouter()
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
 
@@ -23,13 +28,6 @@ export default function AssignedUsersTab({ organizationId }: AssignedUsersTabPro
 
   // Departments for filter dropdown
   const { departments, loading: departmentsLoading } = useDepartments({ fetchAll: true })
-
-  // Fetch organization users
-  const {
-    users,
-    loading: usersLoading,
-    error: usersError
-  } = useUsersByOrganization(organizationId)
 
   // Filter users based on search and filters
   const filteredUsers = users.filter(user => {
@@ -103,7 +101,13 @@ export default function AssignedUsersTab({ organizationId }: AssignedUsersTabPro
     },
     {
       title: 'Actions',
-      render: () => <Eye size={16} className="cursor-pointer text-secondary" />,
+      render: (text: string, record: any) => (
+        <Eye
+          size={16}
+          className="cursor-pointer text-secondary hover:text-secondary/80"
+          onClick={() => router.push(`/user-management/users/${record._id}`)}
+        />
+      ),
     },
   ]
 

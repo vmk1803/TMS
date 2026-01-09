@@ -5,9 +5,13 @@ import RecentlyAddedUsers from './RecentlyAddedUsers'
 import UserAnalyticsLineChart from './charts/UserAnalyticsLineChart'
 import UsersByDepartmentBarChart from './charts/UsersByDepartmentBarChart'
 import RolesBreakdownDonutChart from './charts/RolesBreakdownDonutChart'
-import {TotalDepartmentsIcon, TotalGroupsIcon, InActiveUserIcon, ActiveUserIcon, TotalUserIcon} from '../Icons'
+import { TotalDepartmentsIcon, TotalGroupsIcon, InActiveUserIcon, ActiveUserIcon, TotalUserIcon } from '../Icons'
+import { useUserStatistics } from '@/hooks/useUserStatistics'
+import LoadingSpinner from '../common/LoadingSpinner'
 
 export default function UserOverview() {
+  const { statistics, loading, error } = useUserStatistics()
+
   return (
     <div className="py-6 space-y-6 bg-[#F7F9FB] min-h-screen">
       {/* Header */}
@@ -26,51 +30,70 @@ export default function UserOverview() {
         </button>
       </div>
 
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-600 text-sm">Error loading statistics: {error}</p>
+        </div>
+      )}
+
       {/* Stats Cards */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-  <StatsCard
-    title="Total Users"
-    value="620"
-    change="+10%"
-    icon={TotalUserIcon}
-  />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {loading ? (
+          // Loading state - show spinners for all cards
+          Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="bg-white rounded-2xl p-4 shadow-sm flex justify-center items-center h-24">
+              <LoadingSpinner size="small" />
+            </div>
+          ))
+        ) : (
+          // Real data state
+          <>
+            <StatsCard
+              title="Total Users"
+              value={statistics?.totalUsers?.toString() || '0'}
+              change="+10%"
+              icon={TotalUserIcon}
+            />
 
-  <StatsCard
-    title="Active Users"
-    value="567"
-    change="+10%"
-    icon={ActiveUserIcon}
-  />
+            <StatsCard
+              title="Active Users"
+              value={statistics?.activeUsers?.toString() || '0'}
+              change="+10%"
+              icon={ActiveUserIcon}
+            />
 
-  <StatsCard
-    title="Inactive Users"
-    value="33"
-    change="+10%"
-    icon={InActiveUserIcon}
-  />
+            <StatsCard
+              title="Inactive Users"
+              value={statistics?.inactiveUsers?.toString() || '0'}
+              change="+10%"
+              icon={InActiveUserIcon}
+            />
 
-  <StatsCard
-    title="Total Groups"
-    value="24"
-    icon={TotalGroupsIcon}
-  />
+            <StatsCard
+              title="Total Groups"
+              value={statistics?.totalGroups?.toString() || '0'}
+              icon={TotalGroupsIcon}
+            />
 
-  <StatsCard
-    title="Total Departments"
-    value="16"
-    icon={TotalDepartmentsIcon}
-  />
-</div>
+            <StatsCard
+              title="Total Departments"
+              value={statistics?.totalDepartments?.toString() || '0'}
+              icon={TotalDepartmentsIcon}
+            />
+          </>
+        )}
+      </div>
 
 
       {/* Charts Section (UI placeholders) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-2xl p-5 shadow-sm">
-     <UserAnalyticsLineChart />
+          <UserAnalyticsLineChart />
         </div>
 
         <div className="bg-white rounded-2xl p-5 shadow-sm">
-<UsersByDepartmentBarChart />
+          <UsersByDepartmentBarChart />
 
         </div>
       </div>
@@ -81,7 +104,7 @@ export default function UserOverview() {
 
         <div className="bg-white rounded-2xl p-5 shadow-sm">
           <h3 className="font-semibold text-xl mb-4">Roles Breakdown</h3>
- <RolesBreakdownDonutChart />
+          <RolesBreakdownDonutChart />
         </div>
 
         <div className="bg-white rounded-2xl p-5 shadow-sm">

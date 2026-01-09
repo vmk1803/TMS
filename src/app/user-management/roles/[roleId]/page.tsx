@@ -5,15 +5,10 @@ import { useParams, useRouter } from 'next/navigation'
 import { Button, message } from 'antd'
 import { ChevronLeft } from 'lucide-react'
 import { useRole } from '@/hooks/useRoles'
+import { useUsers } from '@/hooks/useUsers'
 import RoleDetailsTab from './RoleDetailsTab'
 import AssignedUsersTab from './AssignedUsersTab'
 import AssignedGroupsTab from './AssignedGroupsTab'
-
-const TABS = [
-  { key: 'details', label: 'Role Details' },
-  { key: 'users', label: 'Assigned Users (4)' },
-  { key: 'groups', label: 'Assigned Groups (4)' },
-]
 
 export default function RoleDetailsPage() {
   const [activeTab, setActiveTab] = useState('details')
@@ -24,10 +19,19 @@ export default function RoleDetailsPage() {
   // Use the useRole hook to fetch role data
   const { role, loading, error } = useRole(roleId)
 
+  // Get user count for the role
+  const { pagination } = useUsers({ roleId })
+
   // Show error message if failed to load role
   if (error) {
     message.error('Failed to load role details')
   }
+
+  const TABS = [
+    { key: 'details', label: 'Role Details' },
+    { key: 'users', label: `Assigned Users (${pagination?.total_records || 0})` },
+    { key: 'groups', label: 'Assigned Groups (4)' },
+  ]
 
   const handleBack = () => {
     router.push('/user-management/roles')
@@ -97,7 +101,7 @@ export default function RoleDetailsPage() {
 
       {/* Content */}
       {activeTab === 'details' && <RoleDetailsTab role={role} />}
-      {activeTab === 'users' && <AssignedUsersTab />}
+      {activeTab === 'users' && <AssignedUsersTab roleId={roleId} />}
       {activeTab === 'groups' && <AssignedGroupsTab />}
     </div>
   )

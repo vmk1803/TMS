@@ -1,6 +1,7 @@
 import { Table, Input, Dropdown, Button } from 'antd'
 import { Search, ChevronDown, Eye } from 'lucide-react'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useGroupMembers } from '@/hooks/useGroups'
 import { useDebouncedSearch } from '@/hooks/useDebouncedSearch'
 import { useDepartments } from '@/hooks/useDepartments'
@@ -11,6 +12,7 @@ interface AssignedUsersTabProps {
 }
 
 export default function AssignedUsersTab({ groupId, memberIds }: AssignedUsersTabProps) {
+  const router = useRouter()
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
@@ -85,7 +87,13 @@ export default function AssignedUsersTab({ groupId, memberIds }: AssignedUsersTa
     },
     {
       title: 'Actions',
-      render: () => <Eye size={16} className="cursor-pointer text-secondary" />,
+      render: (text: string, record: any) => (
+        <Eye
+          size={16}
+          className="cursor-pointer text-secondary hover:text-secondary/80"
+          onClick={() => router.push(`/user-management/users/${record._id}`)}
+        />
+      ),
     },
   ]
 

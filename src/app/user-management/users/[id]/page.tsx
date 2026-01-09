@@ -3,7 +3,12 @@
 import { useParams, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import Image from 'next/image'
+import { useState } from 'react'
+import { message } from 'antd'
 import { useUser } from '../../../../hooks/useUser'
+import { userApi } from '../../../../services/userService'
+import AssignmentModal from '../AssignmentModal'
+import ConfirmationModal from '../../../../components/common/ConfirmationModal'
 
 export default function UserDetailsPage() {
   const params = useParams()
@@ -11,9 +16,88 @@ export default function UserDetailsPage() {
   const userId = params.id as string
 
   const { user, loading, error, refetch } = useUser(userId)
+  const [assignmentModal, setAssignmentModal] = useState<{
+    isOpen: boolean;
+    type: 'role' | 'department' | null;
+  }>({ isOpen: false, type: null });
+  const [resetPasswordModal, setResetPasswordModal] = useState(false);
+  const [statusChangeModal, setStatusChangeModal] = useState(false);
+  const [statusChangeType, setStatusChangeType] = useState<'activate' | 'deactivate' | null>(null);
 
   const handleEdit = () => {
-    router.push(`/user-management/users/${userId}/edit`)
+    router.push(`/user-management/users/create?userId=${userId}`)
+  }
+
+  const handleAssignRole = () => {
+    setAssignmentModal({ isOpen: true, type: 'role' });
+  }
+
+  const handleAssignDepartment = () => {
+    setAssignmentModal({ isOpen: true, type: 'department' });
+  }
+
+  const handleAssignmentConfirm = async (id: string) => {
+    try {
+      const updateData = assignmentModal.type === 'role'
+        ? { role: id }
+        : { department: id };
+
+      await userApi.updateUser(userId, {
+        organizationDetails: {
+          role: user?.organizationDetails?.role?._id || user?.organizationDetails?.role,
+          department: user?.organizationDetails?.department?._id || user?.organizationDetails?.department,
+          organization: user?.organizationDetails?.organization?._id || user?.organizationDetails?.organization,
+          location: user?.organizationDetails?.location?.id || user?.organizationDetails?.location,
+          reportingManager: user?.organizationDetails?.reportingManager?._id || user?.organizationDetails?.reportingManager,
+          ...updateData
+        }
+      });
+
+      const fieldName = assignmentModal.type === 'role' ? 'Role' : 'Department';
+      message.success(`${fieldName} updated successfully`);
+      refetch();
+      setAssignmentModal({ isOpen: false, type: null });
+    } catch (err: any) {
+      const fieldName = assignmentModal.type === 'role' ? 'role' : 'department';
+      message.error(err?.response?.data?.message || `Failed to update ${fieldName}`);
+    }
+  }
+
+  const handleResetPassword = () => {
+    setResetPasswordModal(true);
+  }
+
+  const handleResetPasswordConfirm = async () => {
+    try {
+      await userApi.resetPassword(userId);
+      message.success('Password reset successfully');
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || 'Failed to reset password');
+    }
+  }
+
+  const handleStatusChange = (type: 'activate' | 'deactivate') => {
+    setStatusChangeType(type);
+    setStatusChangeModal(true);
+  }
+
+  const handleStatusChangeConfirm = async () => {
+    if (!statusChangeType) return;
+
+    try {
+      const newActiveStatus = statusChangeType === 'activate';
+      await userApi.updateUser(userId, { active: newActiveStatus });
+
+      const actionText = statusChangeType === 'activate' ? 'activated' : 'deactivated';
+      message.success(`User ${actionText} successfully`);
+      refetch();
+    } catch (err: any) {
+      const actionText = statusChangeType === 'activate' ? 'activate' : 'deactivate';
+      message.error(err?.response?.data?.message || `Failed to ${actionText} user`);
+    } finally {
+      setStatusChangeModal(false);
+      setStatusChangeType(null);
+    }
   }
 
   // Build activity logs from timestamps
@@ -58,16 +142,24 @@ export default function UserDetailsPage() {
         </button>
 
         <div className="flex gap-2">
-          {['Reset Password', 'Deactivate', 'Assign Role', 'Assign Department'].map(
-            (btn) => (
-              <button
-                key={btn}
-                className="px-4 py-2 text-sm border border-secondary text-secondary rounded-2xl"
-              >
-                {btn}
-              </button>
-            )
-          )}
+          {[
+            { id: 'reset-password', label: 'Reset Password', onClick: handleResetPassword },
+            {
+              id: 'status-change',
+              label: user.active ? 'Deactivate' : 'Activate',
+              onClick: () => handleStatusChange(user.active ? 'deactivate' : 'activate')
+            },
+            { id: 'assign-role', label: 'Assign Role', onClick: handleAssignRole },
+            { id: 'assign-department', label: 'Assign Department', onClick: handleAssignDepartment }
+          ].map((btn) => (
+            <button
+              key={btn.id}
+              onClick={btn.onClick}
+              className="px-4 py-2 text-sm border border-secondary text-secondary rounded-2xl"
+            >
+              {btn.label}
+            </button>
+          ))}
           <button onClick={handleEdit} className="px-5 py-2 text-sm bg-secondary text-white rounded-2xl">
             Edit
           </button>
@@ -156,6 +248,37 @@ export default function UserDetailsPage() {
           </div>
         </div>
       </div>
+
+      <AssignmentModal
+        isOpen={assignmentModal.isOpen}
+        onClose={() => setAssignmentModal({ isOpen: false, type: null })}
+        onConfirm={handleAssignmentConfirm}
+        type={assignmentModal.type || 'role'}
+        currentValueId={
+          assignmentModal.type === 'role'
+            ? user?.organizationDetails?.role?._id
+            : user?.organizationDetails?.department?._id
+        }
+      />
+
+      <ConfirmationModal
+        isOpen={resetPasswordModal}
+        onClose={() => setResetPasswordModal(false)}
+        onConfirm={handleResetPasswordConfirm}
+        title="RESET PASSWORD"
+        body="Do you really want to reset password?"
+      />
+
+      <ConfirmationModal
+        isOpen={statusChangeModal}
+        onClose={() => {
+          setStatusChangeModal(false);
+          setStatusChangeType(null);
+        }}
+        onConfirm={handleStatusChangeConfirm}
+        title={statusChangeType === 'activate' ? 'ACTIVATE USER' : 'DEACTIVATE USER'}
+        body={`Do you really want to ${statusChangeType} this user?`}
+      />
     </div>
   )
 }

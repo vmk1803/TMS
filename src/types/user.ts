@@ -29,6 +29,14 @@ export interface LabAdminProps {
   apiErrors?: Record<string, string[]>;
 }
 
+export interface UserStatistics {
+  totalUsers: number;
+  activeUsers: number;
+  inactiveUsers: number;
+  totalGroups: number;
+  totalDepartments: number;
+}
+
 export interface TechnicianProps {
   onDataChange: (data: any) => void;
   initialData?: any;

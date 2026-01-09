@@ -95,6 +95,9 @@ export default function CreateEditLocationPage() {
     if (!formData.country.trim()) {
       newErrors.country = 'Country is required'
     }
+    if (!formData.state.trim()) {
+      newErrors.state = 'State is required'
+    }
     if (!formData.city.trim()) {
       newErrors.city = 'City is required'
     }
@@ -327,6 +330,7 @@ export default function CreateEditLocationPage() {
             className="bg-secondary rounded-xl"
             onClick={handleSubmit}
             loading={loading}
+            disabled={addresses.length === 0}
           >
             {isEdit ? 'Update' : 'Save'}
           </Button>
@@ -346,7 +350,8 @@ export default function CreateEditLocationPage() {
             </label>
             <Select
               placeholder="Select"
-              className={`w-full rounded-xl bg-[#efeff5] ${errors.country ? 'border-red-500' : ''}`}
+              className="w-full rounded-xl bg-[#efeff5]"
+              status={errors.country ? "error" : undefined}
               value={formData.country}
               onChange={(value) => handleInputChange('country', value)}
             >
@@ -362,10 +367,14 @@ export default function CreateEditLocationPage() {
           </div>
 
           <div>
-            <label className="text-sm font-medium">State*</label>
+            <label className="text-sm font-medium">
+              State*
+              {errors.state && <span className="text-red-500 ml-1">*</span>}
+            </label>
             <Select
               placeholder="Select"
               className="w-full rounded-xl bg-[#efeff5]"
+              status={errors.state ? "error" : undefined}
               value={formData.state}
               onChange={(value) => handleInputChange('state', value)}
             >
@@ -375,6 +384,9 @@ export default function CreateEditLocationPage() {
                 </Option>
               ))}
             </Select>
+            {errors.state && (
+              <p className="text-red-500 text-xs mt-1">{errors.state}</p>
+            )}
           </div>
 
           <div>
@@ -384,7 +396,8 @@ export default function CreateEditLocationPage() {
             </label>
             <Select
               placeholder="Select"
-              className={`w-full rounded-xl bg-[#efeff5] ${errors.city ? 'border-red-500' : ''}`}
+              className="w-full rounded-xl bg-[#efeff5]"
+              status={errors.city ? "error" : undefined}
               value={formData.city}
               onChange={(value) => handleInputChange('city', value)}
             >
@@ -406,7 +419,8 @@ export default function CreateEditLocationPage() {
             </label>
             <Select
               placeholder="Select"
-              className={`w-full rounded-xl bg-[#efeff5] ${errors.timeZone ? 'border-red-500' : ''}`}
+              className="w-full rounded-xl bg-[#efeff5]"
+              status={errors.timeZone ? "error" : undefined}
               value={formData.timeZone}
               onChange={(value) => handleInputChange('timeZone', value)}
             >
@@ -428,7 +442,8 @@ export default function CreateEditLocationPage() {
             </label>
             <Input
               placeholder="Address Line"
-              className={`rounded-xl bg-[#efeff5] ${errors.addressLine ? 'border-red-500' : ''}`}
+              className="rounded-xl bg-[#efeff5]"
+              status={errors.addressLine ? "error" : undefined}
               value={formData.addressLine}
               onChange={(e) => handleInputChange('addressLine', e.target.value)}
             />
@@ -446,7 +461,8 @@ export default function CreateEditLocationPage() {
             </label>
             <Input
               placeholder="Street Address"
-              className={`rounded-xl bg-[#efeff5] ${errors.streetAddress ? 'border-red-500' : ''}`}
+              className="rounded-xl bg-[#efeff5]"
+              status={errors.streetAddress ? "error" : undefined}
               value={formData.streetAddress}
               onChange={(e) => handleInputChange('streetAddress', e.target.value)}
             />
@@ -462,7 +478,8 @@ export default function CreateEditLocationPage() {
             </label>
             <Input
               placeholder="Zip Code"
-              className={`rounded-xl bg-[#efeff5] ${errors.zip ? 'border-red-500' : ''}`}
+              className="rounded-xl bg-[#efeff5]"
+              status={errors.zip ? "error" : undefined}
               value={formData.zip}
               onChange={(e) => handleInputChange('zip', e.target.value)}
             />
