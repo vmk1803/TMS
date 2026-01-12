@@ -6,6 +6,7 @@ import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useDebouncedSearch } from '@/hooks/useDebouncedSearch'
+import { useCSVExport } from '@/hooks/useCSVExport'
 
 // Lazy load heavy components
 const ListPage = dynamic(() => import('@/components/common/ListPage'), {
@@ -32,6 +33,9 @@ export default function OrganizationsTable() {
     debouncedSearchQuery,
     isDebouncing
   } = useDebouncedSearch({ debounceDelay: 1000 })
+
+  // CSV Export functionality
+  const { isExporting, exportData } = useCSVExport()
 
   // Use the hook for all organization operations
   const {
@@ -125,6 +129,13 @@ export default function OrganizationsTable() {
     setCurrentPage(1) // Reset to first page when changing page size
   }
 
+  const handleExportCSV = () => {
+    const filters = {
+      searchTerm: debouncedSearchQuery,
+    }
+    exportData('organizations', filters)
+  }
+
   return (
     <>
       <ListPage
@@ -137,6 +148,8 @@ export default function OrganizationsTable() {
         onView={handleView}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onExportCSV={handleExportCSV}
+        isExporting={isExporting}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         isSearching={isDebouncing}

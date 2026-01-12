@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { useLocations } from '@/hooks/useLocations'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useDebouncedSearch } from '@/hooks/useDebouncedSearch'
+import { useCSVExport } from '@/hooks/useCSVExport'
 
 // Lazy load heavy components
 const ListPage = dynamic(() => import('@/components/common/ListPage'), {
@@ -33,6 +34,9 @@ export default function LocationsPage() {
     debouncedSearchQuery,
     isDebouncing
   } = useDebouncedSearch({ debounceDelay: 1000 })
+
+  // CSV Export functionality
+  const { isExporting, exportData } = useCSVExport()
 
   // Fetch organizations for the dropdown
   const { organizations, loading: organizationsLoading } = useOrganizations({
@@ -160,6 +164,14 @@ export default function LocationsPage() {
     setCurrentPage(1) // Reset to first page when changing page size
   }
 
+  const handleExportCSV = () => {
+    const filters = {
+      searchTerm: debouncedSearchQuery,
+      organizationId: selectedOrganizationId || undefined,
+    }
+    exportData('locations', filters)
+  }
+
   return (
     <>
       <ListPage
@@ -172,6 +184,8 @@ export default function LocationsPage() {
         onView={handleView}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onExportCSV={handleExportCSV}
+        isExporting={isExporting}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         isSearching={isDebouncing}

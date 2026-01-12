@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { Trash2 } from 'lucide-react'
 import { useRoles } from '@/hooks/useRoles'
 import { useDebouncedSearch } from '@/hooks/useDebouncedSearch'
+import { useCSVExport } from '@/hooks/useCSVExport'
 import PermissionDisplay from '@/components/user-management/PermissionDisplay'
 
 // Lazy load heavy components
@@ -34,6 +35,9 @@ export default function RolesPage() {
     debouncedSearchQuery,
     isDebouncing
   } = useDebouncedSearch({ debounceDelay: 1000 })
+
+  // CSV Export functionality
+  const { isExporting, exportData } = useCSVExport()
 
   const {
     roles,
@@ -138,6 +142,14 @@ export default function RolesPage() {
     setCurrentPage(1) // Reset to first page when changing page size
   }
 
+  const handleExportCSV = () => {
+    const filters = {
+      searchTerm: debouncedSearchQuery,
+      permissionSection: permissionFilter !== 'all' ? permissionFilter : undefined,
+    }
+    exportData('roles', filters)
+  }
+
   return (
     <>
       <ListPage
@@ -150,6 +162,8 @@ export default function RolesPage() {
         onView={handleView}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onExportCSV={handleExportCSV}
+        isExporting={isExporting}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         isSearching={isDebouncing}

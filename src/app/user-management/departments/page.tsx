@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { useDepartments } from '@/hooks/useDepartments'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useDebouncedSearch } from '@/hooks/useDebouncedSearch'
+import { useCSVExport } from '@/hooks/useCSVExport'
 import { Tag } from 'antd'
 
 // Lazy load heavy components
@@ -38,6 +39,9 @@ export default function DepartmentsListPage() {
     debouncedSearchQuery,
     isDebouncing
   } = useDebouncedSearch({ debounceDelay: 1000 })
+
+  // CSV Export functionality
+  const { isExporting, exportData } = useCSVExport()
 
   // Fetch all organizations for dropdown
   const { organizations } = useOrganizations({ fetchAll: true, autoFetch: true })
@@ -201,6 +205,16 @@ export default function DepartmentsListPage() {
     setCurrentPage(1)
   }
 
+  const handleExportCSV = () => {
+    const filters = {
+      searchTerm: debouncedSearchQuery,
+      organizationId: selectedOrganization || undefined,
+      departmentId: selectedDepartmentFilter || undefined,
+      status: selectedStatus || undefined,
+    }
+    exportData('departments', filters)
+  }
+
   return (
     <>
       <ListPage
@@ -213,6 +227,8 @@ export default function DepartmentsListPage() {
         onView={handleView}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onExportCSV={handleExportCSV}
+        isExporting={isExporting}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         isSearching={isDebouncing}

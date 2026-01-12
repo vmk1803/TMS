@@ -8,7 +8,6 @@ import { useRole } from '@/hooks/useRoles'
 import { useUsers } from '@/hooks/useUsers'
 import RoleDetailsTab from './RoleDetailsTab'
 import AssignedUsersTab from './AssignedUsersTab'
-import AssignedGroupsTab from './AssignedGroupsTab'
 
 export default function RoleDetailsPage() {
   const [activeTab, setActiveTab] = useState('details')
@@ -30,7 +29,6 @@ export default function RoleDetailsPage() {
   const TABS = [
     { key: 'details', label: 'Role Details' },
     { key: 'users', label: `Assigned Users (${pagination?.total_records || 0})` },
-    { key: 'groups', label: 'Assigned Groups (4)' },
   ]
 
   const handleBack = () => {
@@ -102,7 +100,6 @@ export default function RoleDetailsPage() {
       {/* Content */}
       {activeTab === 'details' && <RoleDetailsTab role={role} />}
       {activeTab === 'users' && <AssignedUsersTab roleId={roleId} />}
-      {activeTab === 'groups' && <AssignedGroupsTab />}
     </div>
   )
 }
