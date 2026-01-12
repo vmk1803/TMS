@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { useGroups } from '@/hooks/useGroups'
 import { useDepartments } from '@/hooks/useDepartments'
 import { useDebouncedSearch } from '@/hooks/useDebouncedSearch'
+import { useCSVExport } from '@/hooks/useCSVExport'
 
 // Lazy load heavy components
 const ListPage = dynamic(() => import('@/components/common/ListPage'), {
@@ -33,6 +34,9 @@ export default function GroupsListPage() {
     debouncedSearchQuery,
     isDebouncing
   } = useDebouncedSearch({ debounceDelay: 1000 })
+
+  // CSV Export functionality
+  const { isExporting, exportData } = useCSVExport()
 
   // Departments for filter dropdown
   const { departments, loading: departmentsLoading } = useDepartments({ fetchAll: true })
@@ -170,6 +174,14 @@ export default function GroupsListPage() {
     setCurrentPage(1) // Reset to first page when changing page size
   }
 
+  const handleExportCSV = () => {
+    const filters = {
+      searchTerm: debouncedSearchQuery,
+      departmentId: selectedDepartment !== 'all' ? selectedDepartment : undefined,
+    }
+    exportData('groups', filters)
+  }
+
   return (
     <>
       <ListPage
@@ -182,6 +194,8 @@ export default function GroupsListPage() {
         onView={handleView}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onExportCSV={handleExportCSV}
+        isExporting={isExporting}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         isSearching={isDebouncing}

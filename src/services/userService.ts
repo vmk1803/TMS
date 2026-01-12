@@ -130,8 +130,22 @@ export const userApi = {
   },
 
   // Get user statistics
-  getUserStatistics: async (options?: { signal?: AbortSignal }): Promise<UserStatistics> => {
-    const response = await api.get('/user-management/statistics', {
+  getUserStatistics: async (options?: { 
+    signal?: AbortSignal; 
+    year?: number; 
+    roleId?: string; 
+  }): Promise<UserStatistics> => {
+    const params = new URLSearchParams();
+    
+    if (options?.year) {
+      params.append('year', options.year.toString());
+    }
+    
+    if (options?.roleId) {
+      params.append('roleId', options.roleId);
+    }
+    
+    const response = await api.get(`/user-management/statistics?${params.toString()}`, {
       signal: options?.signal
     })
     return response.data.data

@@ -27,6 +27,8 @@ interface ListPageProps {
   onView: (record: any) => void
   onEdit: (record: any) => void
   onDelete: (record: any) => void
+  onExportCSV?: () => void
+  isExporting?: boolean
   pagination?: {
     total_records: number
     total_pages: number
@@ -54,6 +56,8 @@ export default function ListPage({
   onView,
   onEdit,
   onDelete,
+  onExportCSV,
+  isExporting = false,
   pagination,
   pageSize = 10,
   onPageSizeChange,
@@ -107,8 +111,16 @@ export default function ListPage({
         </div>
 
         <div className="flex gap-3 text-secondary">
-          <Button className="flex items-center gap-2 rounded-xl border-secondary">
-            <Download className='text-secondary' size={16} /> <span className="text-secondary">Export CSV</span>
+          <Button 
+            className="flex items-center gap-2 rounded-xl border-secondary"
+            onClick={onExportCSV}
+            disabled={isExporting || !onExportCSV}
+            loading={isExporting}
+          >
+            <Download className='text-secondary' size={16} /> 
+            <span className="text-secondary">
+              {isExporting ? 'Exporting...' : 'Export CSV'}
+            </span>
           </Button>
           <Button
             type="primary"

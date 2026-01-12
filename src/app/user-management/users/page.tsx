@@ -7,6 +7,7 @@ import { useUsers } from '@/hooks/useUsers'
 import { useDebouncedSearch } from '@/hooks/useDebouncedSearch'
 import { useDepartments } from '@/hooks/useDepartments'
 import { useRoles } from '@/hooks/useRoles'
+import { useCSVExport } from '@/hooks/useCSVExport'
 import { User } from '@/services/userService'
 
 // Lazy load the DeleteConfirmationModal component
@@ -55,6 +56,9 @@ export default function UsersPage() {
     debouncedSearchQuery,
     isDebouncing
   } = useDebouncedSearch({ debounceDelay: 1000 })
+
+  // CSV Export functionality
+  const { isExporting, exportData } = useCSVExport()
 
   // Fetch all departments and roles for filter dropdowns
   const {
@@ -291,6 +295,16 @@ export default function UsersPage() {
     setCurrentPage(1)
   }
 
+  const handleExportCSV = () => {
+    const filters = {
+      searchTerm: debouncedSearchQuery,
+      departmentId: selectedDepartment !== 'all' ? selectedDepartment : undefined,
+      roleId: selectedRole !== 'all' ? selectedRole : undefined,
+      status: selectedStatus !== 'all' ? selectedStatus : undefined,
+    }
+    exportData('users', filters)
+  }
+
   return (
     <>
       <ListPage
@@ -303,6 +317,8 @@ export default function UsersPage() {
         onView={handleView}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onExportCSV={handleExportCSV}
+        isExporting={isExporting}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         isSearching={isDebouncing}

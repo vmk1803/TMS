@@ -3,13 +3,11 @@
 import { useParams, useRouter } from 'next/navigation'
 import TabContainer from '@/components/common/TabContainer'
 import GroupDetailsTab from './GroupDetailsTab'
-import AssignedManagerTab from './AssignedManagerTab'
 import AssignedUsersTab from './AssignedUsersTab'
 import { useGroup } from '@/hooks/useGroups'
 
 const getTabs = (group: any) => [
   { key: 'details', label: 'Group Details' },
-  { key: 'manager', label: 'Assigned Manager' },
   { key: 'users', label: `Assigned Users (${group?.members?.length || 0})` },
 ]
 
@@ -76,8 +74,6 @@ export default function GroupDetailsPage() {
         switch (activeTab) {
           case 'details':
             return <GroupDetailsTab group={group} />
-          case 'manager':
-            return <AssignedManagerTab managerId={group.manager._id} />
           case 'users':
             return <AssignedUsersTab groupId={groupId} memberIds={group.members.map(m => m._id)} />
           default:
