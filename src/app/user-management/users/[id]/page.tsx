@@ -1,14 +1,15 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronLeft } from 'lucide-react'
 import Image from 'next/image'
 import { useState } from 'react'
 import { message } from 'antd'
+import { Mail, Phone, Calendar, User2 } from 'lucide-react'
 import { useUser } from '../../../../hooks/useUser'
 import { userApi } from '../../../../services/userService'
 import AssignmentModal from '../AssignmentModal'
 import ConfirmationModal from '../../../../components/common/ConfirmationModal'
+import TabContainer from '../../../../components/common/TabContainer'
 
 export default function UserDetailsPage() {
   const params = useParams()
@@ -133,74 +134,93 @@ export default function UserDetailsPage() {
   const managerEmail = user.organizationDetails?.reportingManager?.email || '-'
   const statusLabel = user.active ? 'Active' : 'Inactive'
 
-  return (
-    <div className="p-6 bg-[#F7F9FB] min-h-screen">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <button onClick={() => router.push('/user-management/users')} className="flex items-center gap-2 text-sm text-gray-600">
-          <ChevronLeft size={16} /> User Details
-        </button>
+  // Extract assigned modules from permissions
+  const permissions = (user?.organizationDetails?.role as any)?.permissions as Record<string, string[]> | undefined
+  const assignedModules = permissions
+    ? Object.keys(permissions).filter(
+      module => permissions[module] && permissions[module].length > 0
+    )
+    : []
 
-        <div className="flex gap-2">
-          {[
-            { id: 'reset-password', label: 'Reset Password', onClick: handleResetPassword },
-            {
-              id: 'status-change',
-              label: user.active ? 'Deactivate' : 'Activate',
-              onClick: () => handleStatusChange(user.active ? 'deactivate' : 'activate')
-            },
-            { id: 'assign-role', label: 'Assign Role', onClick: handleAssignRole },
-            { id: 'assign-department', label: 'Assign Department', onClick: handleAssignDepartment }
-          ].map((btn) => (
-            <button
-              key={btn.id}
-              onClick={btn.onClick}
-              className="px-4 py-2 text-sm border border-secondary text-secondary rounded-2xl"
-            >
-              {btn.label}
-            </button>
-          ))}
-          <button onClick={handleEdit} className="px-5 py-2 text-sm bg-secondary text-white rounded-2xl">
-            Edit
-          </button>
+  // Extract role permissions (only modules with permissions)
+  const rolePermissions = permissions
+    ? Object.entries(permissions).filter(
+      ([_, perms]) => Array.isArray(perms) && perms.length > 0
+    )
+    : []
+
+  // Define tabs
+  const tabs = [
+    { key: 'personal-details', label: 'Personal Details' },
+    { key: 'activity-logs', label: 'Activity Logs' }
+  ]
+
+  // Define header actions
+  const getHeaderActions = () => [
+    {
+      label: 'Reset Password',
+      onClick: handleResetPassword,
+      type: 'default' as const
+    },
+    {
+      label: user.active ? 'Deactivate' : 'Activate',
+      onClick: () => handleStatusChange(user.active ? 'deactivate' : 'activate'),
+      type: 'default' as const
+    },
+    {
+      label: 'Assign Role',
+      onClick: handleAssignRole,
+      type: 'default' as const
+    },
+    {
+      label: 'Assign Department',
+      onClick: handleAssignDepartment,
+      type: 'default' as const
+    },
+    {
+      label: 'Edit',
+      onClick: handleEdit,
+      type: 'primary' as const
+    }
+  ]
+
+  // Render Personal Details Tab
+  const renderPersonalDetails = () => (
+    <div className="grid grid-cols-12 gap-6">
+      {/* Personal Info - Left Column */}
+      <div className="col-span-12 md:col-span-4 bg-white rounded-xl p-6">
+        <div className="flex justify-between items-start mb-4">
+          <h2 className="font-semibold">Personal Info</h2>
+          <span className={`px-3 py-1 text-xs ${user.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'} rounded-full`}>
+            {statusLabel}
+          </span>
         </div>
+
+        <div className="flex flex-col items-center text-center mb-6">
+          <Image
+            src={(user as any)?.avatar || 'https://i.pravatar.cc/120'}
+            alt="profile"
+            width={96}
+            height={96}
+            className="rounded-full"
+          />
+          <h3 className="mt-4 font-semibold text-lg">{displayName}</h3>
+          <p className="text-sm text-gray-500">
+            {roleLabel} • {departmentLabel}
+          </p>
+        </div>
+
+        <InfoItem icon={<User2 size={20} />} label="Gender" value={user.gender || '-'} />
+        <InfoItem icon={<Mail size={20} />} label="Email Address" value={user.email || '-'} />
+        <InfoItem icon={<Phone size={20} />} label="Phone Number" value={user.mobileNumber || '-'} />
+        <InfoItem icon={<Calendar size={20} />} label="Created Date" value={user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'} />
       </div>
 
-      {/* Content */}
-      <div className="grid grid-cols-12 gap-6">
-        {/* Left Card */}
-        <div className="col-span-12 md:col-span-4 bg-white rounded-xl p-6">
-          <div className="flex justify-between items-start mb-4">
-            <h2 className="font-semibold">Personal Info</h2>
-            <span className={`px-3 py-1 text-xs ${user.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'} rounded-full`}>
-              {statusLabel}
-            </span>
-          </div>
-
-          <div className="flex flex-col items-center text-center mb-6">
-            <Image
-              src={ (user as any)?.avatar || 'https://i.pravatar.cc/120' }
-              alt="profile"
-              width={96}
-              height={96}
-              className="rounded-full"
-            />
-            <h3 className="mt-4 font-semibold text-lg">{displayName}</h3>
-            <p className="text-sm text-gray-500">
-              {roleLabel} • {departmentLabel}
-            </p>
-          </div>
-
-          <InfoItem label="Email Address" value={user.email || '-'} />
-          <InfoItem label="Phone Number" value={user.mobileNumber || '-'} />
-          <InfoItem label="Created Date" value={user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'} />
-        </div>
-
-        {/* Right Section */}
-        <div className="col-span-12 md:col-span-8 space-y-6">
-
-          <div className='grid grid-cols-[1fr_1fr] space-x-4'>
-        {/* Organizational Details */}
+      {/* Right Section - Contains two cards in a row + full width cards below */}
+      <div className="col-span-12 md:col-span-8 space-y-6">
+        {/* Row with Organizational Details & Assigned Asset */}
+        <div className="grid grid-cols-2 gap-6">
+          {/* Organizational Details */}
           <div className="bg-white rounded-xl p-6">
             <h2 className="font-semibold mb-4">Organizational Details</h2>
 
@@ -221,33 +241,96 @@ export default function UserDetailsPage() {
           <div className="bg-white rounded-xl p-6">
             <h2 className="font-semibold mb-4">Assigned Asset</h2>
 
-            <DetailRow
-              label="Laptop"
-              value="-"
-            />
-            <DetailRow
-              label="Phone"
-              value="-"
-            />
+            <DetailRow label="Laptop" value="-" />
+            <DetailRow label="Phone" value="-" />
             <DetailRow label="Status" value={statusLabel} />
           </div>
-          </div>
-     
+        </div>
 
-          {/* Activity Logs */}
-          <div className="bg-[#F1FAFF] rounded-xl p-6">
-            <h2 className="font-semibold mb-4">Activity Logs</h2>
+        {/* Assigned Modules - Full Width */}
+        <div className="bg-white rounded-xl p-6">
+          <h2 className="font-semibold mb-4">Assigned Modules</h2>
 
-            {logs.map((l) => (
-              <LogItem
-                key={l.title + l.date}
-                title={l.title}
-                desc={l.date}
-              />
-            ))}
-          </div>
+          {assignedModules.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {assignedModules.map((module) => (
+                <span
+                  key={module}
+                  className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full capitalize"
+                >
+                  {module}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">No modules assigned</p>
+          )}
+        </div>
+
+        {/* Role Permissions - Full Width */}
+        <div className="bg-white rounded-xl p-6">
+          <h2 className="font-semibold mb-4">Role Permissions</h2>
+
+          {rolePermissions.length > 0 ? (
+            <div className="space-y-3">
+              {rolePermissions.map(([module, permissions]) => (
+                <div key={module}>
+                  <p className="text-sm font-medium text-gray-700 mb-1 capitalize">{module}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {(permissions as string[]).map((permission) => (
+                      <span
+                        key={permission}
+                        className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full"
+                      >
+                        {permission}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">No permissions assigned</p>
+          )}
         </div>
       </div>
+    </div>
+  )
+
+  // Render Activity Logs Tab
+  const renderActivityLogs = () => (
+    <div className="bg-[#F1FAFF] rounded-xl p-6">
+      <h2 className="font-semibold mb-4">Activity Logs</h2>
+
+      {logs.map((l) => (
+        <LogItem
+          key={l.title + l.date}
+          title={l.title}
+          desc={l.date}
+        />
+      ))}
+    </div>
+  )
+
+  return (
+    <>
+      <TabContainer
+        tabs={tabs}
+        title={displayName}
+        backRoute="/user-management/users"
+        getHeaderActions={getHeaderActions}
+      >
+        {(activeTab) => {
+          switch (activeTab) {
+            case 'personal-details':
+              return renderPersonalDetails()
+            case 'activity-logs':
+              return renderActivityLogs()
+            default:
+              return renderPersonalDetails()
+          }
+        }}
+      </TabContainer>
 
       <AssignmentModal
         isOpen={assignmentModal.isOpen}
@@ -279,25 +362,30 @@ export default function UserDetailsPage() {
         title={statusChangeType === 'activate' ? 'ACTIVATE USER' : 'DEACTIVATE USER'}
         body={`Do you really want to ${statusChangeType} this user?`}
       />
-    </div>
+    </>
   )
 }
 
 
-function InfoItem({ label, value }: any) {
+function InfoItem({ icon, label, value }: any) {
   return (
-    <div className="mb-3">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="text-sm font-medium">{value}</p>
+    <div className="flex items-start gap-3 mb-4">
+      <div className="text-gray-400 mt-0.5">
+        {icon}
+      </div>
+      <div className="flex-1">
+        <p className="text-xs text-gray-500 mb-0.5">{label}</p>
+        <p className="text-sm font-medium text-gray-900 capitalize">{value}</p>
+      </div>
     </div>
   )
 }
 
 function DetailRow({ label, value }: any) {
   return (
-    <div className="grid grid-cols-4 gap-4 text-sm mb-2">
-      <span className="text-gray-500 col-span-2">{label}</span>
-      <span className="col-span-2 font-medium">{value}</span>
+    <div className="flex flex-col sm:grid sm:grid-cols-4 gap-1 sm:gap-4 text-sm mb-3">
+      <span className="text-gray-500 sm:col-span-2">{label}</span>
+      <span className="font-medium break-words sm:col-span-2">{value}</span>
     </div>
   )
 }

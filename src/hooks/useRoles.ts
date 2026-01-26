@@ -74,12 +74,14 @@ export const useRoles = (options: UseRolesOptions = {}): UseRolesReturn => {
   const createRole = useCallback(async (data: CreateRoleData): Promise<Role | null> => {
     try {
       setLoading(true)
-      const newRole = await roleApi.createRole(data)
+      const response = await roleApi.createRole(data);
       message.success('Role created successfully')
       await refetch() // Refresh the list
-      return newRole
+      message.success('Role created successfully')
+      return response
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to create role'
+      console.log(errorMessage, 'errorMessage')
       message.error(errorMessage)
       return null
     } finally {
@@ -91,8 +93,8 @@ export const useRoles = (options: UseRolesOptions = {}): UseRolesReturn => {
     try {
       setLoading(true)
       const updatedRole = await roleApi.updateRole(id, data)
-      message.success('Role updated successfully')
       await refetch() // Refresh the list
+      message.success('Role updated successfully')
       return updatedRole
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to update role'

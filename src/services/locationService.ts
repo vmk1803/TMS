@@ -113,4 +113,10 @@ export const locationApi = {
   deleteLocation: async (id: string): Promise<void> => {
     await api.delete(`/user-management/locations/${id}`)
   },
+
+  // Bulk delete locations
+  bulkDeleteLocations: async (ids: string[]): Promise<{ successCount: number; failedCount: number; message: string; success: boolean }> => {
+    const response = await api.post('/user-management/locations/delete', { ids })
+    return response.data
+  },
 }

@@ -2,10 +2,34 @@
 
 import { Card, Tag, Avatar, Button } from 'antd'
 import { Eye, Trash2Icon } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import ConfirmationModal from '@/components/common/ConfirmationModal'
 import ActivityLogsStepper from '@/components/common/ActivityLogsStepper'
 
-export default function OrganizationDetailsCard({ data, onEdit }: any) {
+export default function OrganizationDetailsCard({ data, onEdit, updateOrganization }: any) {
+  const router = useRouter()
+  const [isModalVisible, setIsModalVisible] = useState(false)
+
+  const handleViewProfile = () => {
+    router.push(`/user-management/users/${data.primaryAdmin._id}`)
+  }
+
+  const handleRemoveAdmin = () => {
+    setIsModalVisible(true)
+  }
+
+  const handleModalConfirm = async () => {
+    await updateOrganization({ primaryAdmin: null })
+    setIsModalVisible(false)
+  }
+
+  const handleModalCancel = () => {
+    setIsModalVisible(false)
+  }
+
   return (
+    <>
     <div className="grid grid-cols-3 gap-6">
       {/* ================= LEFT SECTION ================= */}
       <div className="col-span-2 space-y-6">
@@ -14,10 +38,10 @@ export default function OrganizationDetailsCard({ data, onEdit }: any) {
         <Card className="rounded-xl">
           <div className="flex justify-between items-start">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">
-                {data.email}
+              <h2 className="text-lg font-bold text-green-700">
+                {data.organizationName}
               </h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 {data.description}
               </p>
             </div>
@@ -27,17 +51,23 @@ export default function OrganizationDetailsCard({ data, onEdit }: any) {
             </Tag>
           </div>
 
+          <hr className="my-4 border-gray-200" />
+
           {/* Assigned Departments */}
           <div className="mt-4">
-            <p className="text-sm font-medium text-gray-500 mb-2">
+            <p className="text-sm font-bold text-black mb-2">
               Assigned Departments
             </p>
             <div className="flex flex-wrap gap-2">
-              {data.departments?.map((dept: string) => (
-                <Tag key={dept} className="rounded-full bg-gray-100 border-none">
-                  {dept}
-                </Tag>
-              ))}
+              {data.departments && data.departments.length > 0 ? (
+                data.departments.map((dept: any) => (
+                  <Tag key={dept._id || dept.name} className="rounded-full bg-gray-100 border-none">
+                    {dept.name}
+                  </Tag>
+                ))
+              ) : (
+                <p className="text-xs text-gray-500">No departments assigned</p>
+              )}
             </div>
           </div>
         </Card>
@@ -89,49 +119,60 @@ export default function OrganizationDetailsCard({ data, onEdit }: any) {
 
         {/* Assigned Primary Admin */}
         <Card className="rounded-xl">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-3">
-              <h3 className="font-semibold">Assigned Primary Admin</h3>
-              <Tag className="bg-green-100 text-green-700 border-none">
-                Active
-              </Tag>
-            </div>
+          {data.primaryAdmin && data.primaryAdmin.email ? (
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-3">
+                  <h3 className="font-semibold">Assigned Primary Admin</h3>
+                  <Tag className="bg-green-100 text-green-700 border-none">
+                    Active
+                  </Tag>
+                </div>
 
-            <div className="flex gap-2">
-              <Button type="text" icon={<Eye size={16} />} />
-              <Button type="text" icon={<Trash2Icon size={16} />} />
-            </div>
-          </div>
+                <div className="flex gap-2">
+                  <Button type="text" icon={<Eye size={16} />} onClick={handleViewProfile} />
+                  <Button type="text" icon={<Trash2Icon size={16} />} onClick={handleRemoveAdmin} />
+                </div>
+              </div>
 
-          <div className="flex items-center gap-4">
-            <Avatar size={48} src={data.admin?.avatar} />
+              <div className="flex items-center gap-4">
+                <Avatar size={48} src={`https://picsum.photos/48/48?random=${Math.random()}`} />
 
-            <div>
-              <p className="font-medium">{data.admin?.name}</p>
-              <p className="text-sm text-gray-500">
-                {data.admin?.role}
-              </p>
-            </div>
-          </div>
+                <div>
+                  <p className="font-medium">{`${data.primaryAdmin.firstName} ${data.primaryAdmin.lastName}`}</p>
+                  <p className="text-sm text-gray-500">
+                    {data.primaryAdmin.role}
+                    {data.primaryAdmin.role && data.primaryAdmin.department && ' • '}
+                    {data.primaryAdmin.department}
+                  </p>
+                </div>
+              </div>
 
-          <div className="grid grid-cols-4 gap-4 mt-4 text-sm">
-            <div>
-              <p className="text-gray-500">Company</p>
-              <p>{data.admin?.company}</p>
-            </div>
-            <div>
-              <p className="text-gray-500">Email Address</p>
-              <p>{data.admin?.email}</p>
-            </div>
-            <div>
-              <p className="text-gray-500">Phone Number</p>
-              <p>{data.admin?.phone}</p>
-            </div>
-            <div>
-              <p className="text-gray-500">Last Login</p>
-              <p>{data.admin?.lastLogin}</p>
-            </div>
-          </div>
+              <div className="grid grid-cols-4 gap-4 mt-4 text-sm">
+                <div>
+                  <p className="text-gray-500">Company</p>
+                  <p>{data.organizationName}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Email Address</p>
+                  <p>{data.primaryAdmin.email}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Phone Number</p>
+                  <p>{data.primaryAdmin.mobileNumber}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Last Login</p>
+                  <p>{data.primaryAdmin.lastLogin ? new Date(data.primaryAdmin.lastLogin).toLocaleDateString() : 'Never'}</p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <h3 className="font-semibold mb-4">Assigned Primary Admin</h3>
+              <p className="text-gray-500">Primary admin not available</p>
+            </>
+          )}
         </Card>
       </div>
 
@@ -144,5 +185,16 @@ export default function OrganizationDetailsCard({ data, onEdit }: any) {
         <ActivityLogsStepper logs={data.logs} />
       </Card>
     </div>
+
+    <ConfirmationModal
+      isOpen={isModalVisible}
+      onClose={handleModalCancel}
+      onConfirm={handleModalConfirm}
+      title="Remove Primary Admin"
+      body="Are you sure you want to remove this primary admin from the organization?"
+      confirmText="Remove"
+      cancelText="Cancel"
+    />
+    </>
   )
 }

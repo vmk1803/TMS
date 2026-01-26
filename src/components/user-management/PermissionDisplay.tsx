@@ -1,89 +1,90 @@
-import React, { useState } from 'react'
-import { Tag, Button } from 'antd'
+import React, { useMemo, useState } from 'react'
+import { Button } from 'antd'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 
 interface PermissionDisplayProps {
-  permissions: {
-    projects: string[]
-    task: string[]
-    users: string[]
-    settings: string[]
-  }
+  permissions?: Record<string, unknown>
 }
 
 const PermissionDisplay: React.FC<PermissionDisplayProps> = ({ permissions }) => {
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
+  const [expanded, setExpanded] = useState(false)
 
-  const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }))
-  }
+  const allActions = useMemo(() => {
+    const collected: string[] = []
 
-  const renderSectionPermissions = (sectionName: string, permissionList: string[]) => {
-    if (!permissionList || permissionList.length === 0) {
-      return null
+    const collectStrings = (value: unknown) => {
+      if (typeof value === 'string') {
+        collected.push(value)
+        return
+      }
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          collectStrings(item)
+        }
+      }
     }
 
-    const isExpanded = expandedSections[sectionName]
-    const displayPermissions = isExpanded ? permissionList : permissionList.slice(0, 3)
-    const hasMore = permissionList.length > 3 && !isExpanded
+    if (permissions && typeof permissions === 'object') {
+      for (const value of Object.values(permissions)) {
+        collectStrings(value)
+      }
+    }
 
-    return (
-      <div className="mb-2 last:mb-0">
-        <div className="flex items-center gap-1 flex-wrap">
-          <span className="text-xs font-medium text-gray-600 capitalize">
-            {sectionName}:
-          </span>
-          {displayPermissions.map((permission) => (
-            <Tag
-              key={permission}
-              className="text-xs px-2 py-0.5"
-            >
-              {permission}
-            </Tag>
-          ))}
-          {hasMore && (
-            <Button
-              type="link"
-              size="small"
-              className="text-xs p-0 h-auto text-blue-600 hover:text-blue-800"
-              onClick={() => toggleSection(sectionName)}
-            >
-              +{permissionList.length - 3} more
-              <ChevronDown size={12} className="ml-1" />
-            </Button>
-          )}
-          {isExpanded && permissionList.length > 3 && (
-            <Button
-              type="link"
-              size="small"
-              className="text-xs p-0 h-auto text-blue-600 hover:text-blue-800"
-              onClick={() => toggleSection(sectionName)}
-            >
-              <ChevronUp size={12} />
-            </Button>
-          )}
-        </div>
-      </div>
-    )
-  }
+    const seen = new Set<string>()
+    const unique: string[] = []
+    for (const action of collected) {
+      const normalized = action?.toString?.() ?? ''
+      if (!normalized || seen.has(normalized)) continue
+      seen.add(normalized)
+      unique.push(normalized)
+    }
 
-  const sections = [
-    { key: 'projects', label: 'Projects' },
-    { key: 'task', label: 'Task' },
-    { key: 'users', label: 'Users' },
-    { key: 'settings', label: 'Settings' }
-  ]
+    return unique
+  }, [permissions])
+
+  const maxVisible = 4
+  const visibleActions = expanded ? allActions : allActions.slice(0, maxVisible)
+  const remainingCount = Math.max(0, allActions.length - maxVisible)
 
   return (
     <div className="max-w-md">
-      {sections.map(({ key, label }) => (
-        <div key={key}>
-          {renderSectionPermissions(label.toLowerCase(), permissions[key as keyof typeof permissions] || [])}
-        </div>
-      ))}
+      <div className="flex items-center gap-1 flex-wrap">
+        {visibleActions.length === 0 ? (
+          <span className="text-sm text-gray-500">—</span>
+        ) : (
+          visibleActions.map((action) => (
+            <span
+              key={action}
+              className="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-900"
+            >
+              {action}
+            </span>
+          ))
+        )}
+
+        {!expanded && remainingCount > 0 && (
+          <Button
+            type="link"
+            size="small"
+            className="text-xs p-0 h-auto text-gray-600 hover:text-gray-800"
+            onClick={() => setExpanded(true)}
+          >
+            +{remainingCount} More
+          </Button>
+        )}
+
+        {expanded && remainingCount > 0 && (
+          <Button
+            type="link"
+            size="small"
+            className="text-xs p-0 h-auto text-blue-600 hover:text-blue-800"
+            onClick={() => setExpanded(false)}
+            aria-label="Collapse permissions"
+          >
+            <ChevronUp size={12} />
+          </Button>
+        )}
+      </div>
     </div>
   )
 }

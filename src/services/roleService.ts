@@ -1,6 +1,12 @@
 import api from '@/lib/api'
 
 // Types
+export interface RoleCreatedByUser {
+  _id?: string
+  firstName?: string
+  lastName?: string
+}
+
 export interface Role {
   _id: string
   name: string
@@ -14,7 +20,7 @@ export interface Role {
   userCount?: number
   createdAt?: string
   updatedAt?: string
-  createdBy?: string
+  createdBy?: string | RoleCreatedByUser
 }
 
 export interface CreateRoleData {

@@ -135,6 +135,18 @@ input:-webkit-autofill:active {
   border-radius: 12px; /* match your design */
 }
 
+/* Hide native number input spinners (Chrome/Edge/Safari/Firefox) */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 .ant-table-wrapper .ant-table-thead > tr > th {
   background-color: var(--tableHeader) !important;
   color: var(--tableHeaderText) !important;

@@ -14,6 +14,7 @@ interface UseGroupsOptions {
   pageSize?: number
   searchString?: string
   department?: string
+  group?: string
   autoFetch?: boolean
   fetchAll?: boolean
 }
@@ -27,10 +28,11 @@ interface UseGroupsReturn {
   createGroup: (data: CreateGroupData) => Promise<CreateGroupResponse | null>
   updateGroup: (id: string, data: UpdateGroupData) => Promise<Group | null>
   deleteGroup: (id: string) => Promise<boolean>
+  bulkDeleteGroups: (ids: string[]) => Promise<boolean>
 }
 
 export const useGroups = (options: UseGroupsOptions = {}): UseGroupsReturn => {
-  const { page = 1, pageSize = 10, searchString, department, autoFetch = true, fetchAll = false } = options
+  const { page = 1, pageSize = 10, searchString, department, group, autoFetch = true, fetchAll = false } = options
   const effectivePageSize = fetchAll ? 1000 : pageSize
 
   const [groups, setGroups] = useState<Group[]>([])
@@ -52,7 +54,8 @@ export const useGroups = (options: UseGroupsOptions = {}): UseGroupsReturn => {
           page,
           page_size: effectivePageSize,
           ...(searchString && { search_string: searchString }),
-          ...(department && { department })
+          ...(department && { department }),
+          ...(group && { group })
         }
 
         const response = await groupApi.getGroups(params)
@@ -66,7 +69,7 @@ export const useGroups = (options: UseGroupsOptions = {}): UseGroupsReturn => {
     } finally {
       setLoading(false)
     }
-  }, [page, effectivePageSize, searchString, department, fetchAll])
+  }, [page, effectivePageSize, searchString, department, group, fetchAll])
 
   const refetch = useCallback(async () => {
     await fetchGroups()
@@ -229,6 +232,47 @@ export const useGroups = (options: UseGroupsOptions = {}): UseGroupsReturn => {
     }
   }, [refetch])
 
+  const bulkDeleteGroups = useCallback(async (ids: string[]): Promise<boolean> => {
+    try {
+      if (!Array.isArray(ids) || ids.length === 0) return false
+      setLoading(true)
+      const result = await groupApi.bulkOperation({ ids, operation: 'delete' })
+      const successCount = result?.successCount ?? 0
+      const failedCount = result?.failedCount ?? 0
+
+      if (successCount > 0 && failedCount === 0) {
+        message.success(`${successCount} group${successCount > 1 ? 's' : ''} deleted successfully`)
+      } else if (successCount > 0 && failedCount > 0) {
+        message.warning(`Deleted ${successCount} group${successCount > 1 ? 's' : ''}, failed to delete ${failedCount}`)
+      } else {
+        message.error('Failed to delete selected groups')
+      }
+
+      await refetch()
+      return successCount > 0
+    } catch (err: any) {
+      console.error('Bulk delete groups error:', err)
+
+      let errorMessage = 'Failed to delete selected groups'
+      if (err.response?.data) {
+        const errorData = err.response.data
+        if (errorData.message) errorMessage = errorData.message
+        else if (errorData.error) errorMessage = errorData.error
+      }
+      if (!err.response) {
+        errorMessage = `Network error: ${err.message || 'Unable to connect to server'}`
+      }
+      if (err.response?.status) {
+        errorMessage = `[${err.response.status}] ${errorMessage}`
+      }
+
+      message.error(errorMessage)
+      return false
+    } finally {
+      setLoading(false)
+    }
+  }, [refetch])
+
   useEffect(() => {
     if (autoFetch) {
       fetchGroups()
@@ -243,7 +287,8 @@ export const useGroups = (options: UseGroupsOptions = {}): UseGroupsReturn => {
     refetch,
     createGroup,
     updateGroup,
-    deleteGroup
+    deleteGroup,
+    bulkDeleteGroups
   }
 }
 

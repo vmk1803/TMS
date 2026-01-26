@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { useSidebar } from './SidebarContext'
+import { useNavigation } from '../../hooks/useNavigation'
 import Link from 'next/link'
 
 import {
@@ -62,6 +63,7 @@ export default function Sidebar() {
   const [activePage, setActivePage] = useState('dashboard')
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const router = useRouter()
+  const { navigate } = useNavigation()
 
   const sidebarVariants = {
     collapsed: { width: 76 },
@@ -118,7 +120,7 @@ export default function Sidebar() {
                         toggleDropdown(item.id)
                       } else {
                         setActivePage(item.id)
-                        router.push(item.route!)
+                        navigate(item.route!)
                       }
                     }}
                     className={`flex items-center justify-between w-full px-3 py-3 rounded-2xl transition-colors ${
@@ -162,7 +164,7 @@ export default function Sidebar() {
                               }}
                               onClick={() => {
                                 setActivePage(sub.id)
-                                router.push(sub.route)
+                                navigate(sub.route)
                               }}
                               className={`flex items-center gap-3 px-3 py-2 rounded-md w-full text-left text-sm transition-colors ${
                                 activePage === sub.id
@@ -221,7 +223,7 @@ export default function Sidebar() {
                             toggleDropdown(item.id)
                           } else {
                             setActivePage(item.id)
-                            router.push(item.route!)
+                            navigate(item.route!)
                             setIsMobileOpen(false)
                           }
                         }}
@@ -252,7 +254,7 @@ export default function Sidebar() {
                                 <button
                                   onClick={() => {
                                     setActivePage(sub.id)
-                                    router.push(sub.route)
+                                    navigate(sub.route)
                                     setIsMobileOpen(false)
                                   }}
                                   className="flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-lightGreen"

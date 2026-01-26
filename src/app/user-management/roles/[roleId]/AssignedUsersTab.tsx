@@ -1,49 +1,140 @@
-import { Table, Input, Dropdown, Button } from 'antd'
-import { Search, ChevronDown, Eye } from 'lucide-react'
-import { useState } from 'react'
+import { Table, Input } from 'antd'
+import { Search, Eye } from 'lucide-react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useUsers } from '@/hooks/useUsers'
-import { useDebouncedSearch } from '@/hooks/useDebouncedSearch'
 import { useDepartments } from '@/hooks/useDepartments'
+import SearchableDropdown from '@/components/common/SearchableDropdown'
+import ConfirmationModal from '@/components/common/ConfirmationModal'
+import Pagination from '@/components/common/Pagination'
+import type { PaginatedUsersResponse, User } from '@/services/userService'
 
 interface AssignedUsersTabProps {
   roleId: string
+  onSelectionChange?: (count: number) => void
+
+  users: User[]
+  loading: boolean
+  error: string | null
+  pagination: PaginatedUsersResponse['pagination_info'] | null
+
+  currentPage: number
+  pageSize: number
+  setCurrentPage: (page: number) => void
+  setPageSize: (size: number) => void
+
+  selectedDepartment: string
+  setSelectedDepartment: (deptId: string) => void
+  selectedStatus: string
+  setSelectedStatus: (status: string) => void
+
+  searchQuery: string
+  setSearchQuery: (value: string) => void
+  isDebouncing: boolean
+
+  bulkUpdateUsers: (userIds: string[], updates: Record<string, any>) => Promise<boolean>
 }
 
-export default function AssignedUsersTab({ roleId }: AssignedUsersTabProps) {
-  const router = useRouter()
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
-  const [selectedStatus, setSelectedStatus] = useState<string>('all')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
+export interface AssignedUsersTabRef {
+  handleRemove: () => void
+}
 
-  // Search functionality
+const AssignedUsersTab = forwardRef<AssignedUsersTabRef, AssignedUsersTabProps>((props, ref) => {
   const {
+    roleId,
+    onSelectionChange,
+    users,
+    loading,
+    error,
+    pagination,
+    currentPage,
+    pageSize,
+    setCurrentPage,
+    setPageSize,
+    selectedDepartment,
+    setSelectedDepartment,
+    selectedStatus,
+    setSelectedStatus,
     searchQuery,
     setSearchQuery,
-    debouncedSearchQuery,
-    isDebouncing
-  } = useDebouncedSearch({ debounceDelay: 1000 })
+    isDebouncing,
+    bulkUpdateUsers,
+  } = props
+  const router = useRouter()
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([])
+  const [showRemoveModal, setShowRemoveModal] = useState(false)
 
   // Departments for filter dropdown
   const { departments, loading: departmentsLoading } = useDepartments({ fetchAll: true })
 
-  // Fetch users with role filtering
-  const {
-    users,
-    loading,
-    error,
-    pagination
-  } = useUsers({
-    roleId,
-    page: currentPage,
-    pageSize,
-    searchString: debouncedSearchQuery,
-    departmentId: selectedDepartment === 'all' ? undefined : selectedDepartment,
-    status: selectedStatus === 'all' ? undefined : selectedStatus
-  })
+  useImperativeHandle(ref, () => ({
+    handleRemove: () => {
+      if (selectedUsers.length === 0) return
+      setShowRemoveModal(true)
+    }
+  }), [selectedUsers.length])
+
+  useEffect(() => {
+    onSelectionChange?.(selectedUsers.length)
+  }, [selectedUsers.length, onSelectionChange])
+
+  const displayedUserIds = useMemo(() => users.map(u => u._id), [users])
+  const selectedDisplayedUserIds = useMemo(
+    () => selectedUsers.filter(id => displayedUserIds.includes(id)),
+    [selectedUsers, displayedUserIds]
+  )
+
+  const isAllDisplayedSelected =
+    displayedUserIds.length > 0 && selectedDisplayedUserIds.length === displayedUserIds.length
+  const isSomeDisplayedSelected =
+    selectedDisplayedUserIds.length > 0 && selectedDisplayedUserIds.length < displayedUserIds.length
+
+  const toggleSelectAllDisplayed = (checked: boolean) => {
+    if (checked) {
+      setSelectedUsers(prev => Array.from(new Set([...prev, ...displayedUserIds])))
+    } else {
+      setSelectedUsers(prev => prev.filter(id => !displayedUserIds.includes(id)))
+    }
+  }
+
+  const handleRemoveUsers = async () => {
+    if (selectedUsers.length === 0) return
+
+    const success = await bulkUpdateUsers(selectedUsers, { 'organizationDetails.role': null })
+    if (success) {
+      setSelectedUsers([])
+      setShowRemoveModal(false)
+      setCurrentPage(1)
+    }
+  }
+
   const columns = [
-    { title: '', render: () => <input type="checkbox" /> },
+    {
+      title: (
+        <input
+          type="checkbox"
+          checked={isAllDisplayedSelected}
+          ref={(el) => {
+            if (el) el.indeterminate = isSomeDisplayedSelected
+          }}
+          onChange={(e) => toggleSelectAllDisplayed(e.target.checked)}
+          aria-label="Select all rows"
+        />
+      ),
+      render: (text: string, record: any) => (
+        <input
+          type="checkbox"
+          checked={selectedUsers.includes(record._id)}
+          onChange={(e) => {
+            if (e.target.checked) {
+              setSelectedUsers(prev => [...prev, record._id])
+            } else {
+              setSelectedUsers(prev => prev.filter(id => id !== record._id))
+            }
+          }}
+          aria-label={`Select ${(record.firstName || '').toString()} ${(record.lastName || '').toString()}`.trim()}
+        />
+      )
+    },
     {
       title: 'Name',
       render: (text: string, record: any) => `${record.firstName || ''} ${record.lastName || ''}`.trim() || 'N/A'
@@ -130,54 +221,52 @@ export default function AssignedUsersTab({ roleId }: AssignedUsersTabProps) {
     <div className="bg-white rounded-2xl border">
       <div className="flex items-center justify-between p-4">
         <div className="relative w-[25%]">
-          <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10">
+            <Search size={16} />
+          </div>
           <Input
             placeholder="Search users"
-            className="pl-9 rounded-xl"
+            className="pl-10 rounded-xl"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           {isDebouncing && (
-            <div className="absolute right-3 top-2.5">
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-secondary"></div>
             </div>
           )}
         </div>
 
         <div className="flex gap-3">
-          <Dropdown
-            menu={{
-              items: departmentFilterItems,
-              onClick: ({ key }) => {
-                setSelectedDepartment(key)
-                setCurrentPage(1) // Reset to first page when filtering
-              }
-            }}
-            disabled={departmentsLoading}
-          >
-            <Button className='rounded-xl'>
-              {selectedDepartment === 'all'
+          <SearchableDropdown
+            label={
+              selectedDepartment === 'all'
                 ? 'All Departments'
                 : departments.find(d => d._id === selectedDepartment)?.name || 'All Departments'
-              } <ChevronDown size={14} />
-            </Button>
-          </Dropdown>
-          <Dropdown
-            menu={{
-              items: statusFilterItems,
-              onClick: ({ key }) => {
-                setSelectedStatus(key)
-                setCurrentPage(1) // Reset to first page when filtering
-              }
+            }
+            items={departmentFilterItems}
+            disabled={departmentsLoading}
+            className="rounded-xl"
+            onClick={({ key }) => {
+              setSelectedDepartment(key)
+              setCurrentPage(1) // Reset to first page when filtering
             }}
-          >
-            <Button className='rounded-xl'>
-              {selectedStatus === 'all'
+          />
+          <SearchableDropdown
+            label={
+              selectedStatus === 'all'
                 ? 'All Status'
-                : selectedStatus === 'active' ? 'Active' : 'Inactive'
-              } <ChevronDown size={14} />
-            </Button>
-          </Dropdown>
+                : selectedStatus === 'active'
+                  ? 'Active'
+                  : 'Inactive'
+            }
+            items={statusFilterItems}
+            className="rounded-xl"
+            onClick={({ key }) => {
+              setSelectedStatus(key)
+              setCurrentPage(1) // Reset to first page when filtering
+            }}
+          />
         </div>
       </div>
 
@@ -190,70 +279,32 @@ export default function AssignedUsersTab({ roleId }: AssignedUsersTabProps) {
         scroll={{ x: 'max-content' }}
       />
 
-      {/* Pagination Footer */}
-      {pagination && pagination.total_pages > 1 && (
-        <div className="px-4 py-3 border-t">
-          <div className="flex items-center justify-between text-sm text-gray-500">
-            <div className="flex items-center gap-2">
-              Items per page:
-              <select
-                className="border rounded px-2 py-1 bg-[#efeff5]"
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value))
-                  setCurrentPage(1)
-                }}
-              >
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-              </select>
-            </div>
-            <div>
-              {pagination.current_page * pagination.page_size - pagination.page_size + 1}–{Math.min(pagination.current_page * pagination.page_size, pagination.total_records)} of {pagination.total_records}
-            </div>
-          </div>
-
-          {/* Page Navigation */}
-          <div className="flex items-center justify-center gap-2 mt-3">
-            <button
-              className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={pagination.current_page === 1}
-              onClick={() => setCurrentPage(pagination.current_page - 1)}
-            >
-              Previous
-            </button>
-
-            {/* Page Numbers */}
-            {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
-              const pageNum = pagination.current_page <= 3
-                ? i + 1
-                : pagination.current_page - 2 + i
-              if (pageNum > pagination.total_pages) return null
-
-              return (
-                <button
-                  key={pageNum}
-                  className={`px-3 py-1 text-sm border rounded hover:bg-gray-50 ${
-                    pagination.current_page === pageNum ? 'bg-secondary text-white' : ''
-                  }`}
-                  onClick={() => setCurrentPage(pageNum)}
-                >
-                  {pageNum}
-                </button>
-              )
-            })}
-
-            <button
-              className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={pagination.current_page === pagination.total_pages}
-              onClick={() => setCurrentPage(pagination.current_page + 1)}
-            >
-              Next
-            </button>
-          </div>
-        </div>
+      {pagination && (
+        <Pagination
+          page={currentPage}
+          pageSize={pageSize}
+          totalItems={pagination.total_records}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          maxPageButtons={3}
+          resetPageOnPageSizeChange
+          clampPageToRange
+        />
       )}
+
+      <ConfirmationModal
+        isOpen={showRemoveModal}
+        onClose={() => setShowRemoveModal(false)}
+        onConfirm={handleRemoveUsers}
+        title="Remove Users from Role"
+        body={`Are you sure you want to remove ${selectedUsers.length} user${selectedUsers.length > 1 ? 's' : ''} from this role?`}
+        confirmText="Remove"
+        cancelText="Cancel"
+      />
     </div>
   )
-}
+})
+
+AssignedUsersTab.displayName = 'AssignedUsersTab'
+
+export default AssignedUsersTab

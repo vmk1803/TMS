@@ -27,6 +27,14 @@ interface UseLocationsReturn {
   createLocation: (data: CreateLocationData) => Promise<CreateLocationResponse | null>
   updateLocation: (id: string, data: UpdateLocationData) => Promise<Location | null>
   deleteLocation: (id: string) => Promise<boolean>
+  bulkDeleteLocations: (ids: string[]) => Promise<BulkDeleteLocationsResult>
+}
+
+export interface BulkDeleteLocationsResult {
+  success: boolean
+  successCount: number
+  failedCount: number
+  message: string
 }
 
 export const useLocations = (options: UseLocationsOptions = {}): UseLocationsReturn => {
@@ -146,6 +154,30 @@ export const useLocations = (options: UseLocationsOptions = {}): UseLocationsRet
     }
   }, [refetch])
 
+  const bulkDeleteLocations = useCallback(async (ids: string[]): Promise<BulkDeleteLocationsResult> => {
+    try {
+      setLoading(true)
+      const result = await locationApi.bulkDeleteLocations(ids)
+
+      if (result.success || result.successCount > 0) {
+        message.success('Locations deleted successfully')
+        await refetch() // Refresh the list
+      }
+
+      return result
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to delete locations'
+      return {
+        success: false,
+        successCount: 0,
+        failedCount: ids.length,
+        message: errorMessage,
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [refetch])
+
   useEffect(() => {
     if (autoFetch) {
       fetchLocations()
@@ -160,7 +192,8 @@ export const useLocations = (options: UseLocationsOptions = {}): UseLocationsRet
     refetch,
     createLocation,
     updateLocation,
-    deleteLocation
+    deleteLocation,
+    bulkDeleteLocations
   }
 }
 

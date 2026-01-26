@@ -1,7 +1,17 @@
 'use client'
-import { createContext, useContext, useState, useEffect, useRef } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react'
 
-const SidebarContext = createContext({
+interface SidebarContextType {
+  isExpanded: boolean
+  setIsExpanded: (value: boolean) => void
+  isMobileOpen: boolean
+  setIsMobileOpen: (value: boolean) => void
+  toggleSidebar: () => void
+  handleSidebarHover: (isHovering: boolean) => void
+  isMobile: boolean
+}
+
+const SidebarContext = createContext<SidebarContextType>({
   isExpanded: false,
   setIsExpanded: (value: boolean) => {},
   isMobileOpen: false,
@@ -12,30 +22,51 @@ const SidebarContext = createContext({
 })
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(true)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Detect screen size
-  useEffect(() => {
-    const checkSize = () => setIsMobile(window.innerWidth < 1024)
-    checkSize()
-    window.addEventListener('resize', checkSize)
-    return () => window.removeEventListener('resize', checkSize)
+  // Memoized resize handler to prevent recreation on every render
+  const checkSize = useCallback(() => {
+    const mobile = window.innerWidth < 1024
+    setIsMobile(mobile)
+    // Auto-close mobile sidebar when switching to desktop
+    if (!mobile) {
+      setIsMobileOpen(false)
+    }
   }, [])
 
-  const toggleSidebar = () => {
+  // Detect screen size with throttled resize listener
+  useEffect(() => {
+    checkSize()
+    let resizeTimeout: NodeJS.Timeout
+
+    const throttledResize = () => {
+      clearTimeout(resizeTimeout)
+      resizeTimeout = setTimeout(checkSize, 100) // Throttle to 100ms
+    }
+
+    window.addEventListener('resize', throttledResize)
+    return () => {
+      window.removeEventListener('resize', throttledResize)
+      clearTimeout(resizeTimeout)
+    }
+  }, [checkSize])
+
+  // Memoized toggle function
+  const toggleSidebar = useCallback(() => {
     if (isMobile) {
       setIsMobileOpen(prev => !prev)
     } else {
       setIsExpanded(prev => !prev)
     }
-  }
+  }, [isMobile])
 
-  const handleSidebarHover = (isHovering: boolean) => {
+  // Memoized hover handler
+  const handleSidebarHover = useCallback((isHovering: boolean) => {
     if (isMobile) return // Don't apply hover functionality on mobile
-    
+
     // Clear any existing timeout
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current)
@@ -51,7 +82,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
         setIsExpanded(false)
       }, 300) // 300ms delay before closing
     }
-  }
+  }, [isMobile])
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -62,16 +93,19 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // Memoized context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    isExpanded,
+    setIsExpanded,
+    isMobileOpen,
+    setIsMobileOpen,
+    toggleSidebar,
+    handleSidebarHover,
+    isMobile
+  }), [isExpanded, isMobileOpen, toggleSidebar, handleSidebarHover, isMobile])
+
   return (
-    <SidebarContext.Provider value={{
-      isExpanded,
-      setIsExpanded,
-      isMobileOpen,
-      setIsMobileOpen,
-      toggleSidebar,
-      handleSidebarHover,
-      isMobile
-    }}>
+    <SidebarContext.Provider value={contextValue}>
       {children}
     </SidebarContext.Provider>
   )

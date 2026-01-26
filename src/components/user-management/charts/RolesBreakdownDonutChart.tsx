@@ -51,16 +51,18 @@ export default function RolesBreakdownDonutChart({ roleBreakdown = [], loading =
     );
   }
   return (
-    <div className="flex items-center gap-6">
+    <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-6 p-4">
       {/* Donut Chart */}
-      <div className="w-[200px] h-[200px] relative">
+      <div className="w-[200px] h-[200px] relative flex-shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={chartData}
               dataKey="value"
-              innerRadius={70}
-              outerRadius={95}
+              cx="50%"
+              cy="50%"
+              innerRadius={55}
+              outerRadius={80}
               paddingAngle={6}
               stroke="none"
             >
@@ -84,7 +86,7 @@ export default function RolesBreakdownDonutChart({ roleBreakdown = [], loading =
         {chartData.map((item) => (
           <li key={item.name} className="flex items-center gap-2">
             <span
-              className="w-3 h-3 rounded-md"
+              className="w-3 h-3 rounded-md flex-shrink-0"
               style={{ backgroundColor: item.color }}
             />
             <span className="text-text70">

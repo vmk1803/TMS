@@ -1,7 +1,21 @@
 export default function Loading() {
   return (
     <div className="min-h-[400px] flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      <div className="animate-pulse">
+        <div className="space-y-4">
+          {/* Header skeleton */}
+          <div className="h-8 bg-gray-200 rounded w-48"></div>
+
+          {/* Table skeleton */}
+          <div className="space-y-3">
+            <div className="h-4 bg-gray-200 rounded w-full"></div>
+            <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+            <div className="h-4 bg-gray-200 rounded w-4/6"></div>
+            <div className="h-4 bg-gray-200 rounded w-full"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

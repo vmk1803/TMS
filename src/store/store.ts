@@ -20,7 +20,7 @@ const rootReducer = combineReducers({
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['orders'],
+  whitelist: [], // No slices persisted - only persist minimal auth/preferences if needed
 }
 
 const persistedReducer = persistReducer(persistConfig, rootReducer)

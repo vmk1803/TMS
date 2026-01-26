@@ -7,11 +7,15 @@ export interface Organization {
   email: string
   contactNumber: string
   description: string
+  status: string
   primaryAdmin: string // ObjectId as string
   locations: string[] // Array of location strings
   createdBy: string // ObjectId as string
   createdAt?: string
   updatedAt?: string
+  // Optional aggregated fields
+  departmentCount?: number
+  userCount?: number
 }
 
 export interface CreateOrganizationData {
@@ -19,6 +23,7 @@ export interface CreateOrganizationData {
   email: string
   contactNumber: string
   description: string
+  status?: string
   primaryAdmin?: string
   locations?: string[]
   createdAt: string
@@ -34,6 +39,7 @@ export interface UpdateOrganizationData {
   email?: string
   contactNumber?: string
   description?: string
+  status?: string
   primaryAdmin?: string
   locations?: string[]
 }
@@ -58,6 +64,7 @@ export const organizationApi = {
       page?: number
       page_size?: number
       search_string?: string
+      status?: string
     },
     options?: { signal?: AbortSignal }
   ): Promise<PaginatedOrganizationsResponse> => {
@@ -104,5 +111,17 @@ export const organizationApi = {
   // Delete organization
   deleteOrganization: async (id: string): Promise<void> => {
     await api.delete(`/user-management/organizations/${id}`)
+  },
+
+  // Bulk update organization status
+  bulkUpdateStatus: async (organizationIds: string[], status: string): Promise<{ message: string, modifiedCount: number }> => {
+    const response = await api.post('/user-management/organizations/bulk-update', {
+      organizationIds,
+      status
+    })
+    return {
+      message: response.data.message,
+      modifiedCount: response.data.data.modifiedCount
+    }
   },
 }

@@ -265,7 +265,7 @@ export default function AddNewPatientPage() {
       <div className="flex-1 flex overflow-hidden h-[calc(100vh-160px) pb-4">
         {/* Sidebar Progress - Fixed Height */}
         <aside className="w-64 bg-white shadow-sm p-4 rounded-3xl border border-gray-100 flex-shrink-0 mr-4 h-[calc(100vh-220px)] overflow-y-auto">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Let's Start</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Let&apos;s Start</h2>
           <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
             <div className="w-full bg-gray-200 h-1.5 rounded-full mr-2">
               <div

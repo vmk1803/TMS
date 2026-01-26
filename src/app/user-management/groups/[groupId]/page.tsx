@@ -1,14 +1,15 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import TabContainer from '@/components/common/TabContainer'
+import { useRef, useState } from 'react'
+import TabContainer, { HeaderAction } from '@/components/common/TabContainer'
 import GroupDetailsTab from './GroupDetailsTab'
 import AssignedUsersTab from './AssignedUsersTab'
 import { useGroup } from '@/hooks/useGroups'
 
 const getTabs = (group: any) => [
   { key: 'details', label: 'Group Details' },
-  { key: 'users', label: `Assigned Users (${group?.members?.length || 0})` },
+  { key: 'users', label: `Assigned Users (${group?.members?.length || 0})`, disbaled: !group?.members?.length },
 ]
 
 export default function GroupDetailsPage() {
@@ -16,8 +17,53 @@ export default function GroupDetailsPage() {
   const router = useRouter()
   const groupId = params.groupId as string
 
+  // Refs for tab actions
+  const assignedUsersTabRef = useRef<{
+    handleRemove: () => void
+    handleAddUser: () => void
+  }>(null)
+
+  // State for selected users count
+  const [selectedUsersCount, setSelectedUsersCount] = useState(0)
+
   // Fetch group data
-  const { group, loading, error } = useGroup(groupId)
+  const { group, loading, error, updateGroup } = useGroup(groupId)
+
+  const getHeaderActions = (activeTab: string) => {
+    switch (activeTab) {
+      case 'users':
+        const actions: HeaderAction[] = [
+          {
+            label: 'Remove',
+            onClick: () => assignedUsersTabRef.current?.handleRemove(),
+            type: 'default' as const,
+            danger: true,
+            disabled: selectedUsersCount === 0,
+          }
+        ]
+
+        // Only show Add User button when no rows are selected
+        if (selectedUsersCount === 0) {
+          actions.push({
+            label: 'Add Users',
+            onClick: () => assignedUsersTabRef.current?.handleAddUser(),
+            type: 'primary' as const,
+          })
+        }
+
+        return actions
+      case 'details':
+        return [
+          {
+            label: 'Edit',
+            onClick: () => router.push(`/user-management/groups/create?groupId=${group.id || group._id}`),
+            type: 'primary' as const,
+          },
+        ]
+      default:
+        return []
+    }
+  }
 
   // Loading state
   if (loading) {
@@ -52,7 +98,7 @@ export default function GroupDetailsPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-gray-600 mb-2">Group Not Found</h2>
-          <p className="text-gray-500 mb-4">The group you're looking for doesn't exist.</p>
+          <p className="text-gray-500 mb-4">The group you&apos;re looking for doesn&apos;t exist.</p>
           <button
             onClick={() => router.push('/user-management/groups')}
             className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90"
@@ -68,16 +114,23 @@ export default function GroupDetailsPage() {
     <TabContainer
       tabs={getTabs(group)}
       backRoute="/user-management/groups"
-      editRoute={`/user-management/groups/create?groupId=${group.id || group._id}`}
+      showEditButton={false}
+      getHeaderActions={getHeaderActions}
     >
       {(activeTab) => {
         switch (activeTab) {
           case 'details':
-            return <GroupDetailsTab group={group} />
+            return <GroupDetailsTab group={group} updateGroup={updateGroup} />
           case 'users':
-            return <AssignedUsersTab groupId={groupId} memberIds={group.members.map(m => m._id)} />
+            return <AssignedUsersTab
+              ref={assignedUsersTabRef}
+              groupId={groupId}
+              memberIds={group.members.map(m => m._id)}
+              group={group}
+              onSelectionChange={setSelectedUsersCount}
+            />
           default:
-            return <GroupDetailsTab group={group} />
+            return <GroupDetailsTab group={group} updateGroup={updateGroup} />
         }
       }}
     </TabContainer>

@@ -24,6 +24,7 @@ interface UseUsersReturn {
   pagination: PaginatedUsersResponse['pagination_info'] | null
   refetch: () => Promise<void>
   deleteUser: (userId: string) => Promise<boolean>
+  bulkUpdateUsers: (userIds: string[], updates: Record<string, any>) => Promise<boolean>
 }
 
 export const useUsersByOrganization = (organizationId: string, options: Omit<UseUsersOptions, 'organizationId' | 'roleId' | 'fetchAll'> = {}): UseUsersReturn => {
@@ -67,6 +68,20 @@ export const useUsersByOrganization = (organizationId: string, options: Omit<Use
     }
   }, [])
 
+  const bulkUpdateUsers = useCallback(async (userIds: string[], updates: Record<string, any>): Promise<boolean> => {
+    try {
+      await userApi.bulkUpdateUsers({ ids: userIds, operation: 'update', updates })
+      message.success('Users updated successfully')
+      // Refetch to get updated data
+      await fetchUsers()
+      return true
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to update users'
+      message.error(errorMessage)
+      return false
+    }
+  }, [fetchUsers])
+
   useEffect(() => {
     if (autoFetch && organizationId) {
       fetchUsers()
@@ -79,7 +94,8 @@ export const useUsersByOrganization = (organizationId: string, options: Omit<Use
     error,
     pagination: null, // No pagination for organization users
     refetch,
-    deleteUser
+    deleteUser,
+    bulkUpdateUsers
   }
 }
 
@@ -151,6 +167,20 @@ export const useUsers = (options: UseUsersOptions = {}): UseUsersReturn => {
     }
   }, [pagination])
 
+  const bulkUpdateUsers = useCallback(async (userIds: string[], updates: Record<string, any>): Promise<boolean> => {
+    try {
+      await userApi.bulkUpdateUsers({ ids: userIds, operation: 'update', updates })
+      message.success('Users updated successfully')
+      // Refetch to get updated data
+      await fetchUsers()
+      return true
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to update users'
+      message.error(errorMessage)
+      return false
+    }
+  }, [fetchUsers])
+
   useEffect(() => {
     if (autoFetch) {
       fetchUsers()
@@ -163,6 +193,7 @@ export const useUsers = (options: UseUsersOptions = {}): UseUsersReturn => {
     error,
     pagination,
     refetch,
-    deleteUser
+    deleteUser,
+    bulkUpdateUsers
   }
 }

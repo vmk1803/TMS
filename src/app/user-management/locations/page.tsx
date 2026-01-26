@@ -2,11 +2,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { message } from 'antd'
+import { Trash2, Download } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useLocations } from '@/hooks/useLocations'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useDebouncedSearch } from '@/hooks/useDebouncedSearch'
 import { useCSVExport } from '@/hooks/useCSVExport'
+import { exportToCSV } from '@/utils/csvGenerator'
 
 // Lazy load heavy components
 const ListPage = dynamic(() => import('@/components/common/ListPage'), {
@@ -23,6 +26,9 @@ export default function LocationsPage() {
   const router = useRouter()
   const [deleteModalVisible, setDeleteModalVisible] = useState(false)
   const [locationToDelete, setLocationToDelete] = useState<any>(null)
+  const [bulkDeleteModalVisible, setBulkDeleteModalVisible] = useState(false)
+  const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([])
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<string>('')
@@ -48,7 +54,8 @@ export default function LocationsPage() {
     locations: rawLocations,
     loading,
     pagination,
-    deleteLocation
+    deleteLocation,
+    bulkDeleteLocations
   } = useLocations({
     autoFetch: true,
     searchString: debouncedSearchQuery,
@@ -112,7 +119,8 @@ export default function LocationsPage() {
     searchPlaceholder: 'Search locations',
     dropdowns: [
       {
-        label: 'All Companies',
+        label: selectedOrganizationId ?
+          organizationItems.find(item => item.key === selectedOrganizationId)?.label : 'All Companies',
         items: organizationItems,
         onClick: ({ key }: { key: string }) => {
           setSelectedOrganizationId(key)
@@ -145,6 +153,7 @@ export default function LocationsPage() {
 
     const success = await deleteLocation(locationToDelete.id)
     if (success) {
+      message.success('Location deleted successfully')
       setDeleteModalVisible(false)
       setLocationToDelete(null)
     }
@@ -172,6 +181,79 @@ export default function LocationsPage() {
     exportData('locations', filters)
   }
 
+  const handleBulkDelete = (selectedIds: string[], selectedRecords: any[]) => {
+    setSelectedLocationIds(selectedIds)
+    setBulkDeleteModalVisible(true)
+  }
+
+  const handleBulkExportCSV = (selectedIds: string[], selectedRecords: any[]) => {
+    exportToCSV(
+      selectedRecords.map(location => ({
+        Name: location.locationName,
+        Organization: location.organizationDetails?.organizationName || 'N/A',
+        Address: location.address,
+        'Phone Number': location.phoneNumber,
+        'User Count': location.userCount || 0,
+        'Time Zone': location.timeZone
+      })),
+      {
+        filename: `selected-locations-${new Date().toISOString().split('T')[0]}`
+      }
+    )
+  }
+
+  // Bulk actions configuration
+  const bulkActions = [
+    {
+      key: 'delete',
+      label: 'Delete',
+      icon: <Trash2 size={16} />,
+      onClick: handleBulkDelete,
+      loading: isBulkDeleting,
+      danger: true
+    },
+    {
+      key: 'export',
+      label: 'Export CSV',
+      icon: <Download size={16} />,
+      onClick: handleBulkExportCSV,
+      className: 'border-secondary'
+    }
+  ]
+
+  const confirmBulkDelete = async () => {
+    if (selectedLocationIds.length === 0) return
+
+    setIsBulkDeleting(true)
+
+    try {
+      const result = await bulkDeleteLocations(selectedLocationIds)
+
+      if (result.success) {
+        if (result.failedCount > 0) {
+          message.warning(`${result.successCount} location(s) deleted. ${result.failedCount} failed.`)
+        } else {
+          message.success(result.message || `${result.successCount} location(s) deleted successfully`)
+        }
+
+        // Close modal after a successful request (even if some failed)
+        setBulkDeleteModalVisible(false)
+        setSelectedLocationIds([])
+      } else {
+        message.error(result.message || 'Failed to delete locations')
+      }
+    } catch (err: any) {
+      message.error(err?.message || 'Failed to delete locations')
+    } finally {
+      setIsBulkDeleting(false)
+    }
+  }
+
+  const cancelBulkDelete = () => {
+    setBulkDeleteModalVisible(false)
+    setSelectedLocationIds([])
+  }
+
   return (
     <>
       <ListPage
@@ -193,6 +275,7 @@ export default function LocationsPage() {
         pageSize={itemsPerPage}
         onPageSizeChange={handlePageSizeChange}
         onPageChange={handlePageChange}
+        bulkActions={bulkActions}
       />
 
       <DeleteConfirmationModal
@@ -200,6 +283,14 @@ export default function LocationsPage() {
         onClose={cancelDelete}
         onConfirm={confirmDelete}
         title="Delete Location"
+      />
+
+      <DeleteConfirmationModal
+        isOpen={bulkDeleteModalVisible}
+        onClose={cancelBulkDelete}
+        onConfirm={confirmBulkDelete}
+        title={`Delete ${selectedLocationIds.length} Location${selectedLocationIds.length > 1 ? 's' : ''}`}
+        loading={isBulkDeleting}
       />
     </>
   )
