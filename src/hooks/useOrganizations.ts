@@ -13,6 +13,7 @@ interface UseOrganizationsOptions {
   page?: number
   pageSize?: number
   searchString?: string
+  status?: string
   autoFetch?: boolean
   fetchAll?: boolean
 }
@@ -26,10 +27,11 @@ interface UseOrganizationsReturn {
   createOrganization: (data: CreateOrganizationData) => Promise<CreateOrganizationResponse | null>
   updateOrganization: (id: string, data: UpdateOrganizationData) => Promise<Organization | null>
   deleteOrganization: (id: string) => Promise<boolean>
+  bulkUpdateStatus: (organizationIds: string[], status: string) => Promise<boolean>
 }
 
 export const useOrganizations = (options: UseOrganizationsOptions = {}): UseOrganizationsReturn => {
-  const { page = 1, pageSize = 10, searchString, autoFetch = true, fetchAll = false } = options
+  const { page = 1, pageSize = 10, searchString, status, autoFetch = true, fetchAll = false } = options
 
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [loading, setLoading] = useState(false)
@@ -51,7 +53,8 @@ export const useOrganizations = (options: UseOrganizationsOptions = {}): UseOrga
         const params = {
           page,
           page_size: pageSize,
-          ...(searchString && { search_string: searchString })
+          ...(searchString && { search_string: searchString }),
+          ...(status && { status })
         }
 
         const response = await organizationApi.getOrganizations(params)
@@ -65,7 +68,7 @@ export const useOrganizations = (options: UseOrganizationsOptions = {}): UseOrga
     } finally {
       setLoading(false)
     }
-  }, [page, pageSize, searchString, fetchAll])
+  }, [page, pageSize, searchString, status, fetchAll])
 
   const refetch = useCallback(async () => {
     await fetchOrganizations()
@@ -263,6 +266,23 @@ export const useOrganizations = (options: UseOrganizationsOptions = {}): UseOrga
     }
   }, [refetch])
 
+  const bulkUpdateStatus = useCallback(async (organizationIds: string[], status: string): Promise<boolean> => {
+    try {
+      setLoading(true)
+      const response = await organizationApi.bulkUpdateStatus(organizationIds, status)
+      message.success(response.message)
+      await refetch() // Refresh the list
+      return true
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to update organization statuses'
+      setError(errorMessage)
+      message.error(errorMessage)
+      return false
+    } finally {
+      setLoading(false)
+    }
+  }, [refetch])
+
   useEffect(() => {
     if (autoFetch) {
       fetchOrganizations()
@@ -277,7 +297,8 @@ export const useOrganizations = (options: UseOrganizationsOptions = {}): UseOrga
     refetch,
     createOrganization,
     updateOrganization,
-    deleteOrganization
+    deleteOrganization,
+    bulkUpdateStatus
   }
 }
 

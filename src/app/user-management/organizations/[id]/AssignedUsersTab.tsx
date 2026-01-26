@@ -1,9 +1,12 @@
-import { Table, Input, Dropdown, Button } from 'antd'
-import { Search, ChevronDown, Eye } from 'lucide-react'
-import { useState } from 'react'
+import { Table, Input, Button } from 'antd'
+import { Search, Eye } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useDebouncedSearch } from '@/hooks/useDebouncedSearch'
 import { useDepartments } from '@/hooks/useDepartments'
+import { useRoles } from '@/hooks/useRoles'
+import SearchableDropdown from '@/components/common/SearchableDropdown'
+import Pagination from '@/components/common/Pagination'
 import { User } from '@/services/userService'
 
 interface AssignedUsersTabProps {
@@ -11,12 +14,17 @@ interface AssignedUsersTabProps {
   users: User[]
   loading: boolean
   error: string | null
+  onSelectionChange?: (selected: string[]) => void
 }
 
-export default function AssignedUsersTab({ organizationId, users, loading: usersLoading, error: usersError }: AssignedUsersTabProps) {
+export default function AssignedUsersTab({ organizationId, users, loading: usersLoading, error: usersError, onSelectionChange }: AssignedUsersTabProps) {
   const router = useRouter()
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
+  const [selectedRole, setSelectedRole] = useState<string>('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   // Search functionality
   const {
@@ -29,30 +37,98 @@ export default function AssignedUsersTab({ organizationId, users, loading: users
   // Departments for filter dropdown
   const { departments, loading: departmentsLoading } = useDepartments({ fetchAll: true })
 
+  // Roles for filter dropdown
+  const { roles, loading: rolesLoading } = useRoles({ fetchAll: true })
+
   // Filter users based on search and filters
-  const filteredUsers = users.filter(user => {
-    // Search filter
-    const searchLower = debouncedSearchQuery.toLowerCase()
-    const matchesSearch = !debouncedSearchQuery ||
-      user.firstName?.toLowerCase().includes(searchLower) ||
-      user.lastName?.toLowerCase().includes(searchLower) ||
-      user.email.toLowerCase().includes(searchLower) ||
-      user.mobileNumber?.toLowerCase().includes(searchLower)
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => {
+      // Search filter
+      const searchLower = debouncedSearchQuery.toLowerCase()
+      const matchesSearch = !debouncedSearchQuery ||
+        user.firstName?.toLowerCase().includes(searchLower) ||
+        user.lastName?.toLowerCase().includes(searchLower) ||
+        user.email.toLowerCase().includes(searchLower) ||
+        user.mobileNumber?.toLowerCase().includes(searchLower)
 
-    // Department filter
-    const matchesDepartment = selectedDepartment === 'all' ||
-      user.organizationDetails?.department?._id === selectedDepartment
+      // Department filter
+      const matchesDepartment = selectedDepartment === 'all' ||
+        user.organizationDetails?.department?._id === selectedDepartment
 
-    // Status filter
-    const matchesStatus = selectedStatus === 'all' ||
-      (selectedStatus === 'active' && user.active) ||
-      (selectedStatus === 'inactive' && !user.active)
+      // Role filter
+      const matchesRole = selectedRole === 'all' ||
+        user.organizationDetails?.role?._id === selectedRole
 
-    return matchesSearch && matchesDepartment && matchesStatus
-  })
+      // Status filter
+      const matchesStatus = selectedStatus === 'all' ||
+        (selectedStatus === 'active' && user.active) ||
+        (selectedStatus === 'inactive' && !user.active)
+
+      return matchesSearch && matchesDepartment && matchesRole && matchesStatus
+    })
+  }, [users, debouncedSearchQuery, selectedDepartment, selectedRole, selectedStatus])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearchQuery])
+
+  // Notify parent of selection changes
+  useEffect(() => {
+    onSelectionChange?.(selectedUsers)
+  }, [selectedUsers, onSelectionChange])
+
+  const pagedUsers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredUsers.slice(start, start + pageSize)
+  }, [currentPage, filteredUsers, pageSize])
+
+  const displayedUserIds = useMemo(() => pagedUsers.map(u => u._id), [pagedUsers])
+  const selectedDisplayedUserIds = useMemo(
+    () => selectedUsers.filter(id => displayedUserIds.includes(id)),
+    [selectedUsers, displayedUserIds]
+  )
+
+  const isAllDisplayedSelected =
+    displayedUserIds.length > 0 && selectedDisplayedUserIds.length === displayedUserIds.length
+  const isSomeDisplayedSelected =
+    selectedDisplayedUserIds.length > 0 && selectedDisplayedUserIds.length < displayedUserIds.length
+
+  const toggleSelectAllDisplayed = (checked: boolean) => {
+    if (checked) {
+      setSelectedUsers(prev => Array.from(new Set([...prev, ...displayedUserIds])))
+    } else {
+      setSelectedUsers(prev => prev.filter(id => !displayedUserIds.includes(id)))
+    }
+  }
 
   const columns = [
-    { title: '', render: () => <input type="checkbox" /> },
+    {
+      title: (
+        <input
+          type="checkbox"
+          checked={isAllDisplayedSelected}
+          ref={(el) => {
+            if (el) el.indeterminate = isSomeDisplayedSelected
+          }}
+          onChange={(e) => toggleSelectAllDisplayed(e.target.checked)}
+          aria-label="Select all rows"
+        />
+      ),
+      render: (text: string, record: any) => (
+        <input
+          type="checkbox"
+          checked={selectedUsers.includes(record._id)}
+          onChange={(e) => {
+            if (e.target.checked) {
+              setSelectedUsers(prev => [...prev, record._id])
+            } else {
+              setSelectedUsers(prev => prev.filter(id => id !== record._id))
+            }
+          }}
+          aria-label={`Select ${record.firstName || ''} ${record.lastName || ''}`.trim()}
+        />
+      )
+    },
     {
       title: 'Name',
       render: (text: string, record: any) => `${record.firstName || ''} ${record.lastName || ''}`.trim() || 'N/A'
@@ -119,6 +195,14 @@ export default function AssignedUsersTab({ organizationId, users, loading: users
     }))
   ]
 
+  const roleFilterItems = [
+    { key: 'all', label: 'All Roles' },
+    ...roles.map(role => ({
+      key: role._id,
+      label: role.name
+    }))
+  ]
+
   const statusFilterItems = [
     { key: 'all', label: 'All Status' },
     { key: 'active', label: 'Active' },
@@ -136,61 +220,82 @@ export default function AssignedUsersTab({ organizationId, users, loading: users
   }
 
   return (
-    <div className="bg-white rounded-2xl border">
+    <div className="assigned-users-tab bg-white rounded-2xl border">
+      <style jsx>{`
+        .assigned-users-tab .ant-checkbox-indeterminate .ant-checkbox-inner {
+          background-color: white !important;
+        }
+        .assigned-users-tab .ant-checkbox-indeterminate .ant-checkbox-inner::after {
+          background-color: #d9d9d9 !important;
+        }
+      `}</style>
       <div className="flex items-center justify-between p-4">
         <div className="relative w-[30%]">
-          <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10">
+            <Search size={16} />
+          </div>
           <Input
             placeholder="Search users"
-            className="pl-9 rounded-xl"
+            className="pl-10 rounded-xl"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           {isDebouncing && (
-            <div className="absolute right-3 top-2.5">
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-secondary"></div>
             </div>
           )}
         </div>
 
         <div className="flex gap-3">
-          <Dropdown
-            menu={{
-              items: departmentFilterItems,
-              onClick: ({ key }) => setSelectedDepartment(key)
-            }}
-            disabled={departmentsLoading}
-          >
-            <Button className='rounded-xl'>
-              {selectedDepartment === 'all'
+          <SearchableDropdown
+            label={
+              selectedDepartment === 'all'
                 ? 'All Departments'
                 : departments.find(d => d._id === selectedDepartment)?.name || 'All Departments'
-              } <ChevronDown size={14} />
-            </Button>
-          </Dropdown>
-          <Dropdown
-            menu={{
-              items: statusFilterItems,
-              onClick: ({ key }) => setSelectedStatus(key)
-            }}
-          >
-            <Button className='rounded-xl'>
-              {selectedStatus === 'all'
+            }
+            items={departmentFilterItems}
+            onClick={({ key }) => setSelectedDepartment(key)}
+          />
+          <SearchableDropdown
+            label={
+              selectedRole === 'all'
+                ? 'All Roles'
+                : roles.find(r => r._id === selectedRole)?.name || 'All Roles'
+            }
+            items={roleFilterItems}
+            onClick={({ key }) => setSelectedRole(key)}
+          />
+          <SearchableDropdown
+            label={
+              selectedStatus === 'all'
                 ? 'All Status'
                 : selectedStatus === 'active' ? 'Active' : 'Inactive'
-              } <ChevronDown size={14} />
-            </Button>
-          </Dropdown>
+            }
+            items={statusFilterItems}
+            onClick={({ key }) => setSelectedStatus(key)}
+          />
         </div>
       </div>
 
       <Table
         columns={columns}
-        dataSource={filteredUsers}
+        dataSource={pagedUsers}
         pagination={false}
         rowKey="_id"
         loading={usersLoading}
         scroll={{ x: 'max-content' }}
+      />
+
+      <Pagination
+        page={currentPage}
+        pageSize={pageSize}
+        totalItems={filteredUsers.length}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
+        maxPageButtons={3}
+        resetPageOnPageSizeChange
+        clampPageToRange
       />
     </div>
   )

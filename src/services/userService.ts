@@ -129,6 +129,16 @@ export const userApi = {
     return response.data.data
   },
 
+  // Bulk operations on users
+  bulkUpdateUsers: async (data: {
+    ids: string[]
+    operation: string
+    updates?: Record<string, any>
+  }): Promise<User[]> => {
+    const response = await api.post('/user-management/users/bulk-update', data)
+    return response.data.data
+  },
+
   // Get user statistics
   getUserStatistics: async (options?: { 
     signal?: AbortSignal; 

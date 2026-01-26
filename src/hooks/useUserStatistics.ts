@@ -5,8 +5,6 @@ import { UserStatistics } from '@/types/user'
 
 interface UseUserStatisticsOptions {
   autoFetch?: boolean
-  year?: number
-  roleId?: string
 }
 
 interface UseUserStatisticsReturn {
@@ -14,16 +12,14 @@ interface UseUserStatisticsReturn {
   loading: boolean
   error: string | null
   refetch: () => Promise<void>
-  updateFilters: (filters: { year?: number; roleId?: string }) => void
 }
 
 export const useUserStatistics = (options: UseUserStatisticsOptions = {}): UseUserStatisticsReturn => {
-  const { autoFetch = true, year: initialYear, roleId: initialRoleId } = options
+  const { autoFetch = true } = options
   
   const [statistics, setStatistics] = useState<UserStatistics | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [filters, setFilters] = useState({ year: initialYear, roleId: initialRoleId })
 
   const fetchStatistics = useCallback(async () => {
     const controller = new AbortController()
@@ -33,9 +29,7 @@ export const useUserStatistics = (options: UseUserStatisticsOptions = {}): UseUs
       setError(null)
       
       const data = await userApi.getUserStatistics({ 
-        signal: controller.signal,
-        year: filters.year,
-        roleId: filters.roleId
+        signal: controller.signal
       })
       setStatistics(data)
     } catch (err: any) {
@@ -54,15 +48,11 @@ export const useUserStatistics = (options: UseUserStatisticsOptions = {}): UseUs
     return () => {
       controller.abort()
     }
-  }, [filters.year, filters.roleId])
+  }, [])
 
   const refetch = useCallback(async () => {
     await fetchStatistics()
   }, [fetchStatistics])
-
-  const updateFilters = useCallback((newFilters: { year?: number; roleId?: string }) => {
-    setFilters(prev => ({ ...prev, ...newFilters }))
-  }, [])
 
   useEffect(() => {
     if (autoFetch) {
@@ -74,7 +64,6 @@ export const useUserStatistics = (options: UseUserStatisticsOptions = {}): UseUs
     statistics,
     loading,
     error,
-    refetch,
-    updateFilters
+    refetch
   }
 }

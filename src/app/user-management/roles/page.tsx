@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { Trash2 } from 'lucide-react'
+import { Avatar } from 'antd'
 import { useRoles } from '@/hooks/useRoles'
 import { useDebouncedSearch } from '@/hooks/useDebouncedSearch'
 import { useCSVExport } from '@/hooks/useCSVExport'
@@ -63,6 +64,45 @@ export default function RolesPage() {
       ),
     },
     {
+      title: 'Description',
+      dataIndex: 'description',
+      key: 'description',
+      render: (text: string | undefined) => (
+        <span className="text-sm text-gray-600">{text?.trim() ? text : '—'}</span>
+      ),
+    },
+    {
+      title: 'Modules',
+      key: 'modules',
+      render: (record: any) => {
+        const permissions = record?.permissions
+        const modules = [
+          { key: 'projects', label: 'Projects' },
+          { key: 'task', label: 'Task' },
+          { key: 'users', label: 'Users' },
+          { key: 'settings', label: 'Settings' },
+        ]
+
+        const enabledModules = modules.filter((m) =>
+          Array.isArray(permissions?.[m.key]) && permissions[m.key].length > 0
+        )
+
+        if (enabledModules.length === 0) {
+          return <span className="text-sm text-gray-500">—</span>
+        }
+
+        if (enabledModules.length === modules.length) {
+          return <span className="text-sm text-gray-700">All modules</span>
+        }
+
+        return (
+          <span className="text-sm text-gray-700">
+            {enabledModules.map((m) => m.label).join(', ')}
+          </span>
+        )
+      },
+    },
+    {
       title: 'Permissions',
       dataIndex: 'permissions',
       key: 'permissions',
@@ -73,9 +113,34 @@ export default function RolesPage() {
     {
       title: 'Assigned Users',
       key: 'users',
-      render: (record: any) => (
-        <span className="text-sm text-gray-500">{record.userCount || 0} Users</span>
-      ),
+      render: (record: any) => {
+        const count = record?.userCount || 0
+
+        // Generate random placeholder colors for profile avatars
+        const avatarColors = ['#f56a00', '#7265e6', '#ffbf00', '#00a2ae', '#f04864']
+        const getRandomColor = () => avatarColors[Math.floor(Math.random() * avatarColors.length)]
+
+        const name = record?.name || 'User'
+
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">{count} Users</span>
+            {count > 0 && (
+              <Avatar.Group size="small" maxCount={3}>
+                <Avatar style={{ backgroundColor: getRandomColor() }}>
+                  {name?.charAt(0) || 'U'}
+                </Avatar>
+                <Avatar style={{ backgroundColor: getRandomColor() }}>
+                  {name?.charAt(1) || 'S'}
+                </Avatar>
+                <Avatar style={{ backgroundColor: getRandomColor() }}>
+                  {name?.charAt(2) || 'R'}
+                </Avatar>
+              </Avatar.Group>
+            )}
+          </div>
+        )
+      },
     },
   ]
 

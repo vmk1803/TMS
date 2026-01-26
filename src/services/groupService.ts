@@ -13,6 +13,11 @@ export interface Group {
     _id: string
     firstName: string
     lastName: string
+    role?: string
+    department?: string
+    email: string
+    mobileNumber: string
+    lastLogin?: string
   }
   members: Array<{
     _id: string
@@ -58,6 +63,8 @@ export interface PaginatedGroupsResponse {
     prev_page: number | null
   }
 }
+
+export type GroupBulkOperation = 'delete'
 
 // API Functions
 export const groupApi = {
@@ -108,6 +115,17 @@ export const groupApi = {
   // Delete group
   deleteGroup: async (id: string): Promise<void> => {
     await api.delete(`/user-management/groups/${id}`)
+  },
+
+  // Bulk operations (extensible endpoint)
+  bulkOperation: async (data: { ids: string[]; operation: GroupBulkOperation }): Promise<{
+    success: string[]
+    failed: string[]
+    successCount: number
+    failedCount: number
+  }> => {
+    const response = await api.post('/user-management/groups/bulk-update', data)
+    return response.data.data
   },
 
   // Get group members with pagination and filters

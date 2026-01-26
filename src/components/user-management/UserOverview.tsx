@@ -215,10 +215,12 @@ export default function UserOverview() {
       </div>
 
       {/* Bottom Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <RecentlyAddedUsers recentUsers={statistics?.recentlyAddedUsers || []} loading={statsLoading} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="lg:col-span-1">
+          <RecentlyAddedUsers recentUsers={statistics?.recentlyAddedUsers || []} loading={statsLoading} />
+        </div>
 
-        <div className="bg-white rounded-2xl p-5 shadow-sm">
+        <div className="bg-white rounded-2xl p-5 shadow-sm min-w-0">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-semibold text-xl">Roles Breakdown</h3>
             <YearSelector
@@ -230,7 +232,7 @@ export default function UserOverview() {
           <RolesBreakdownDonutChart roleBreakdown={rolesData?.roleBreakdown || []} loading={rolesLoading} />
         </div>
 
-        <div className="bg-white rounded-2xl p-5 shadow-sm">
+        <div className="bg-white rounded-2xl p-5 shadow-sm lg:col-span-2 xl:col-span-1">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-semibold text-xl">Organizations</h3>
             <YearSelector

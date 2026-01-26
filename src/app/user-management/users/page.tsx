@@ -9,6 +9,7 @@ import { useDepartments } from '@/hooks/useDepartments'
 import { useRoles } from '@/hooks/useRoles'
 import { useCSVExport } from '@/hooks/useCSVExport'
 import { User } from '@/services/userService'
+import AllDatesPicker from '@/components/common/AllDatesPicker'
 
 // Lazy load the DeleteConfirmationModal component
 const DeleteConfirmationModal = dynamic(() => import('@/components/common/DeleteConfirmationModal'), {
@@ -48,6 +49,24 @@ export default function UsersPage() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
   const [selectedRole, setSelectedRole] = useState<string>('all')
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+
+  // Calculate active filter count
+  const activeFilterCount = [
+    selectedDepartment !== 'all' ? 1 : 0,
+    selectedRole !== 'all' ? 1 : 0,
+    selectedStatus !== 'all' ? 1 : 0,
+    selectedDate ? 1 : 0,
+  ].reduce((sum, val) => sum + val, 0)
+
+  // Clear all filters function
+  const handleClearFilters = () => {
+    setSelectedDepartment('all')
+    setSelectedRole('all')
+    setSelectedStatus('all')
+    setSelectedDate(null)
+    setCurrentPage(1)
+  }
 
   // Use the debounced search hook
   const {
@@ -96,7 +115,7 @@ export default function UsersPage() {
   const loading = usersLoading || departmentsLoading || rolesLoading
 
   // Transform users to match UI expectations
-  const users = rawUsers.map(user => ({
+  const transformedUsers = rawUsers.map(user => ({
     id: user._id,
     _id: user._id,
     name: getUserDisplayName(user),
@@ -107,8 +126,27 @@ export default function UsersPage() {
     role: user.organizationDetails?.role?.name || user.role || 'N/A',
     department: user.organizationDetails?.department?.name || 'N/A',
     lastLogin: user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never',
+    lastLoginRaw: user.lastLogin, // Keep raw date for filtering
     status: user.active ? 'Active' : 'Inactive',
   }))
+
+  // Client-side filtering by date
+  const users = transformedUsers.filter(user => {
+    if (!selectedDate) return true // No filter, show all users
+    if (!user.lastLoginRaw) return false // Has filter but user has no login date, exclude them
+
+    // Parse selected date (MM-DD-YYYY format)
+    const [mm, dd, yyyy] = selectedDate.split('-').map(Number)
+    const selectedDateObj = new Date(yyyy, mm - 1, dd)
+    selectedDateObj.setHours(0, 0, 0, 0)
+
+    // Parse user's last login date
+    const userLoginDate = new Date(user.lastLoginRaw)
+    userLoginDate.setHours(0, 0, 0, 0)
+
+    // Compare dates (exact match)
+    return userLoginDate.getTime() === selectedDateObj.getTime()
+  })
 
   /* ----------------------------- TABLE COLUMNS ----------------------------- */
   const columns = [
@@ -251,6 +289,17 @@ export default function UsersPage() {
         }
       },
     ],
+    customFilters: (
+      <AllDatesPicker
+        value={selectedDate}
+        onChange={(date) => {
+          setSelectedDate(date)
+          setCurrentPage(1)
+        }}
+        placeholder="Select Date"
+        className="w-[180px]"
+      />
+    )
   }
 
   /* -------------------------------- Handlers -------------------------------- */
@@ -326,6 +375,8 @@ export default function UsersPage() {
         pageSize={itemsPerPage}
         onPageSizeChange={handlePageSizeChange}
         onPageChange={handlePageChange}
+        activeFilterCount={activeFilterCount}
+        onClearFilters={handleClearFilters}
       />
 
       <DeleteConfirmationModal

@@ -58,7 +58,7 @@ export default function CreateEditOrganizationPage() {
         email: organization.email,
         contactNumber: organization.contactNumber,
         description: organization.description,
-        primaryAdmin: organization.primaryAdmin,
+        primaryAdmin: (organization.primaryAdmin as any)?._id || organization.primaryAdmin,
         locations: organization.locations,
       } : undefined}
       onSubmit={handleSubmit}

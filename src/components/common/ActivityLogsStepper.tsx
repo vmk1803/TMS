@@ -1,6 +1,7 @@
 interface ActivityLog {
   title: string
   date: string
+  subtitle?: string
   color?: string
 }
 
@@ -39,15 +40,18 @@ export default function ActivityLogsStepper({ logs }: ActivityLogsStepperProps) 
             </div>
 
             {/* Content */}
-            <div className="text-sm pt-1">
+            <div className="pt-1">
               <p
-                className={`font-medium ${
+                className={`text-base font-semibold ${
                   log.color ?? fallbackColors[idx % fallbackColors.length]
                 }`}
               >
                 {log.title}
               </p>
-              <p className="text-gray-500">{log.date}</p>
+              <p className="text-sm text-gray-500">{log.date}</p>
+              {log.subtitle && (
+                <p className="text-sm text-gray-400 mt-1">{log.subtitle}</p>
+              )}
             </div>
           </div>
         ))}

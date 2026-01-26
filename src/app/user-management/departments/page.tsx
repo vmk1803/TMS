@@ -7,7 +7,10 @@ import { useDepartments } from '@/hooks/useDepartments'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useDebouncedSearch } from '@/hooks/useDebouncedSearch'
 import { useCSVExport } from '@/hooks/useCSVExport'
-import { Tag } from 'antd'
+import { message } from 'antd'
+import { Download } from 'lucide-react'
+import { departmentApi } from '@/services/departmentService'
+import { exportToCSV } from '@/utils/csvGenerator'
 
 // Lazy load heavy components
 const ListPage = dynamic(() => import('@/components/common/ListPage'), {
@@ -20,6 +23,10 @@ const DeleteConfirmModal = dynamic(() => import('@/components/common/DeleteConfi
   loading: () => null
 })
 
+const ConfirmationModal = dynamic(() => import('@/components/common/ConfirmationModal'), {
+  loading: () => null
+})
+
 export default function DepartmentsListPage() {
   const router = useRouter()
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -27,10 +34,15 @@ export default function DepartmentsListPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
+  // Bulk operation states
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
+  const [bulkOperation, setBulkOperation] = useState<'delete' | null>(null)
+  const [bulkSelectedIds, setBulkSelectedIds] = useState<string[]>([])
+  const [bulkLoading, setBulkLoading] = useState(false)
+
   // Filter states
   const [selectedOrganization, setSelectedOrganization] = useState<string | null>(null)
   const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState<string | null>(null)
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null)
 
   // Simple debounced search
   const {
@@ -54,13 +66,13 @@ export default function DepartmentsListPage() {
     departments,
     loading,
     pagination,
-    deleteDepartment
+    deleteDepartment,
+    refetch
   } = useDepartments({
     autoFetch: true,
     searchString: debouncedSearchQuery,
     organizationId: selectedOrganization || undefined,
     departmentId: selectedDepartmentFilter || undefined,
-    status: selectedStatus || undefined,
     page: currentPage,
     pageSize: itemsPerPage
   })
@@ -76,6 +88,12 @@ export default function DepartmentsListPage() {
       ),
     },
     {
+      title: 'Created Date',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      render: (date: string) => date ? new Date(date).toLocaleDateString() : 'N/A',
+    },
+    {
       title: 'Organization',
       dataIndex: 'organizationName',
       key: 'organizationName',
@@ -87,25 +105,17 @@ export default function DepartmentsListPage() {
       key: 'headOfDepartment',
       render: (text: string, record: any) => {
         const head = record.headOfDepartment
-        return head ? `${head.fname} ${head.lname}` : 'N/A'
+        return head ? `${head?.firstName || ''} ${head?.lastName || ''}`.trim() || 'N/A' : 'N/A'
       },
     },
     {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => (
-        <Tag color={status === 'active' ? 'green' : 'red'}>
-          {status.charAt(0).toUpperCase() + status.slice(1)}
-        </Tag>
+      title: 'Users Count',
+      dataIndex: 'usersCount',
+      key: 'usersCount',
+      render: (count: number | undefined) => (
+        <span className="font-medium text-gray-900">{count ?? 0}</span>
       ),
-    },
-    {
-      title: 'Created Date',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (date: string) => date ? new Date(date).toLocaleDateString() : 'N/A',
-    },
+    }
   ]
 
   /* -------------------------------- Filters -------------------------------- */
@@ -137,21 +147,7 @@ export default function DepartmentsListPage() {
           setSelectedOrganization(item.key === 'all' ? null : item.key)
           setCurrentPage(1) // Reset to first page
         }
-      },
-      {
-        label: selectedStatus
-          ? selectedStatus.charAt(0).toUpperCase() + selectedStatus.slice(1)
-          : 'All Status',
-        items: [
-          { key: 'all', label: 'All Status' },
-          { key: 'active', label: 'Active' },
-          { key: 'inactive', label: 'Inactive' },
-        ],
-        onClick: (item: { key: string }) => {
-          setSelectedStatus(item.key === 'all' ? null : item.key)
-          setCurrentPage(1) // Reset to first page
-        }
-      },
+      }
     ],
   }
 
@@ -178,8 +174,11 @@ export default function DepartmentsListPage() {
 
     const success = await deleteDepartment(selectedDepartment._id)
     if (success) {
+      message.success('Department deleted successfully')
       setDeleteOpen(false)
       setSelectedDepartment(null)
+    } else {
+      message.error('Failed to delete department')
     }
   }
 
@@ -201,19 +200,98 @@ export default function DepartmentsListPage() {
   const resetFilters = () => {
     setSelectedOrganization(null)
     setSelectedDepartmentFilter(null)
-    setSelectedStatus(null)
     setCurrentPage(1)
   }
 
   const handleExportCSV = () => {
     const filters = {
-      searchTerm: debouncedSearchQuery,
+      searchString: debouncedSearchQuery,
       organizationId: selectedOrganization || undefined,
       departmentId: selectedDepartmentFilter || undefined,
-      status: selectedStatus || undefined,
     }
     exportData('departments', filters)
   }
+
+  /* -------------------------------- Bulk Actions -------------------------------- */
+  const handleBulkDelete = (selectedIds: string[], selectedRecords: any[]) => {
+    setBulkSelectedIds(selectedIds)
+    setBulkOperation('delete')
+    setBulkConfirmOpen(true)
+  }
+
+  const confirmBulkOperation = async () => {
+    if (!bulkOperation || bulkSelectedIds.length === 0) return
+
+    setBulkLoading(true)
+    try {
+      const result = await departmentApi.bulkOperation({
+        ids: bulkSelectedIds,
+        operation: bulkOperation
+      });
+
+      if (result?.failedCount > 0) {
+        message.warning(
+          `${result.successCount} department(s) deleted. ${result.failedCount} failed.`
+        )
+      } else {
+        message.success(
+          `${result.successCount} department(s) deleted successfully`
+        )
+      }
+
+      // Refresh the data using hook refetch
+      await refetch()
+
+      setBulkConfirmOpen(false)
+      setBulkOperation(null)
+      setBulkSelectedIds([])
+    } catch (error: any) {
+      console.error('Bulk operation failed:', error)
+      message.error(error?.response?.data?.message || error?.message || 'Bulk operation failed')
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
+  const cancelBulkOperation = () => {
+    setBulkConfirmOpen(false)
+    setBulkOperation(null)
+    setBulkSelectedIds([])
+  }
+
+  const handleBulkExportCSV = (selectedIds: string[], selectedRecords: any[]) => {
+    exportToCSV(
+      selectedRecords.map(dept => ({
+        'Department Name': dept.name,
+        'Organization': dept.organization?.organizationName || 'N/A',
+        'Description': dept.description || 'N/A',
+        'Head of Department': dept.headOfDepartment
+          ? `${dept.headOfDepartment.firstName} ${dept.headOfDepartment.lastName}`
+          : 'N/A',
+        'Created Date': dept.createdAt ? new Date(dept.createdAt).toLocaleDateString() : 'N/A'
+      })),
+      { filename: `selected-departments-${new Date().toISOString().split('T')[0]}` }
+    )
+
+    message.success(`Exported ${selectedRecords.length} department(s) to CSV`)
+  }
+
+  const bulkActions = [
+    {
+      key: 'delete',
+      label: 'Delete',
+      onClick: handleBulkDelete,
+      loading: bulkLoading && bulkOperation === 'delete',
+      danger: true
+    },
+    {
+      key: 'export',
+      label: 'Export CSV',
+      icon: <Download size={16} />,
+      onClick: handleBulkExportCSV,
+      className: 'border-secondary'
+    }
+  ]
 
   return (
     <>
@@ -236,6 +314,7 @@ export default function DepartmentsListPage() {
         pageSize={itemsPerPage}
         onPageSizeChange={handlePageSizeChange}
         onPageChange={handlePageChange}
+        bulkActions={bulkActions}
       />
 
       {/* Delete Confirmation */}
@@ -244,6 +323,17 @@ export default function DepartmentsListPage() {
         onClose={cancelDelete}
         onConfirm={confirmDelete}
         title="Delete Department"
+      />
+
+      {/* Bulk Operation Confirmation */}
+      <ConfirmationModal
+        isOpen={bulkConfirmOpen}
+        onClose={cancelBulkOperation}
+        onConfirm={confirmBulkOperation}
+        title="Bulk Delete Departments"
+        body={`Do you really want to delete ${bulkSelectedIds.length} department${bulkSelectedIds.length > 1 ? 's' : ''}?`}
+        confirmText="Yes"
+        cancelText="No"
       />
     </>
   )

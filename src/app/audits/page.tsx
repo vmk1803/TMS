@@ -1,5 +1,5 @@
 'use client';
-import React from 'react'
+import { useState } from 'react'
 import Title from '../../components/common/Title'
 import { AssignIcon } from '../../components/Icons'
 import ButtonLight from '../../components/common/ButtonLight'
@@ -7,8 +7,8 @@ import EventsPage from './components/EventsPage';
 
 import { exportToCSV } from '../../utils/exportToCSV';
 
-const page = () => {
-  const [selectedRows, setSelectedRows] = React.useState<any[]>([]);
+const Page = () => {
+  const [selectedRows, setSelectedRows] = useState<any[]>([]);
 
   const handleExport = () => {
     if (selectedRows.length > 0) {
@@ -49,4 +49,4 @@ const page = () => {
   )
 }
 
-export default page
+export default Page

@@ -9,6 +9,13 @@ export default function RoleDetailsTab({ role }: RoleDetailsTabProps) {
     return <div className="text-center py-8">Role not found</div>
   }
 
+  const createdByUser = role.createdBy && typeof role.createdBy === 'object' ? role.createdBy : null
+  const createdByName = [createdByUser?.firstName, createdByUser?.lastName]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+  const createdByLabel = createdByName || 'System'
+
   // Get permission sections that have permissions assigned
   const getPermissionSections = () => {
     const sections = [
@@ -46,11 +53,13 @@ export default function RoleDetailsTab({ role }: RoleDetailsTabProps) {
         <div className="bg-white rounded-2xl p-6 border">
           <h2 className="text-lg font-semibold text-secondary">{role.name}</h2>
           <p className="text-sm text-gray-500">
-            {role.description || 'No description'} • Created on {formatDate(role.createdAt)}
+            {role.description || 'No description'} • Created by {createdByLabel}
           </p>
+          
+          <hr className='my-4' />
 
           <div className="mt-4">
-            <p className="text-sm font-medium mb-2">Permission Sections</p>
+            <p className="text-sm font-medium mb-2">Assigned Modules</p>
             <div className="flex gap-2 flex-wrap">
               {permissionSections.map(section => (
                 <span
@@ -130,7 +139,7 @@ export default function RoleDetailsTab({ role }: RoleDetailsTabProps) {
               {/* Step 3: Permissions Assigned */}
               <div className="flex items-start gap-4">
                 <div className="relative z-10 flex-shrink-0">
-                 <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center">
                     <div className="w-4 h-4 rounded-full bg-secondary"></div>
                   </div>
                 </div>

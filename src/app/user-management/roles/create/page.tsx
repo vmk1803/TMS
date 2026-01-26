@@ -98,19 +98,20 @@ export default function CreateRolePage() {
         permissions: backendPermissions
       }
 
+      let result = null
       if (isEditMode && roleId) {
-        await updateRole(roleId, roleData)
-        message.success('Role updated successfully')
+        result = await updateRole(roleId, roleData)
       } else {
-        await createRole(roleData)
-        message.success('Role created successfully')
+        result = await createRole(roleData)
       }
 
-      // Redirect back to roles page
-      router.push('/user-management/roles')
+      // Only redirect if the operation was successful (result is not null)
+      if (result) {
+        router.push('/user-management/roles')
+      }
     } catch (error) {
       console.error('Role submission error:', error)
-      message.error('Failed to save role. Please try again.')
+      // Error message is already shown by the hook
     } finally {
       setLoading(false)
     }
@@ -231,8 +232,8 @@ export default function CreateRolePage() {
           )}
 
           <div className="grid grid-cols-8 px-2 text-sm font-medium text-gray-500 mb-2">
-            <div className='text-secondary'>Section</div>
-            <div className='text-secondary px-2 col-span-7'>Permissions</div>
+            <div className='text-secondary'>Name</div>
+            <div className='text-secondary px-2 col-span-7'>Access</div>
           </div>
 
           {Object.entries(permissionsConfig).map(([module, perms]) => (

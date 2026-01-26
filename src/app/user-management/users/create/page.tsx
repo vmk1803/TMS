@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { message } from 'antd'
 import { useRoles } from '@/hooks/useRoles'
+
 import { useDepartments } from '@/hooks/useDepartments'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useLocations } from '@/hooks/useLocations'
@@ -190,7 +191,7 @@ export default function CreateUserPage() {
   }
 
   const handleSave = async () => {
-    if (!validateForm()) return
+    if (!validateForm() || loading) return
     setLoading(true)
     try {
       // Prepare payload
@@ -234,7 +235,6 @@ export default function CreateUserPage() {
   const handleCancel = () => {
     router.push('/user-management/users')
   }
-  console.log(formData, 'formData');
   // Dropdown options mapping
   const roleOptions = roles.map((r: any) => ({ key: r._id, value: r.name }))
   const departmentOptions = departments.map((d: any) => ({ key: d._id, value: d.name }))
@@ -271,10 +271,30 @@ export default function CreateUserPage() {
 
       {/* Organizational Details */}
       <Section title="Organizational Details">
-        <Select label="Role*" options={roleOptions} value={formData.organizationDetails.role} onChange={(value) => setFormData(prev => ({ ...prev, organizationDetails: { ...prev.organizationDetails, role: value } }))} error={errors['org-role']} />
-        <Select label="Department*" options={departmentOptions} value={formData.organizationDetails.department} onChange={(value) => setFormData(prev => ({ ...prev, organizationDetails: { ...prev.organizationDetails, department: value } }))} error={errors['org-department']} />
-        <Select label="Company*" options={companyOptions} value={formData.organizationDetails.organization} onChange={(value) => setFormData(prev => ({ ...prev, organizationDetails: { ...prev.organizationDetails, organization: value } }))} error={errors['org-organization']} />
-        <Select label="Location*" options={locationOptions} value={formData.organizationDetails.location} onChange={(value) => setFormData(prev => ({ ...prev, organizationDetails: { ...prev.organizationDetails, location: value } }))} error={errors['org-location']} />
+        <Select label="Role*" options={roleOptions} value={formData.organizationDetails.role} onChange={(value) => {
+          setFormData(prev => ({ ...prev, organizationDetails: { ...prev.organizationDetails, role: value } }))
+          if (errors['org-role']) {
+            setErrors(prev => ({ ...prev, 'org-role': '' }))
+          }
+        }} error={errors['org-role']} />
+        <Select label="Department*" options={departmentOptions} value={formData.organizationDetails.department} onChange={(value) => {
+          setFormData(prev => ({ ...prev, organizationDetails: { ...prev.organizationDetails, department: value } }))
+          if (errors['org-department']) {
+            setErrors(prev => ({ ...prev, 'org-department': '' }))
+          }
+        }} error={errors['org-department']} />
+        <Select label="Company*" options={companyOptions} value={formData.organizationDetails.organization} onChange={(value) => {
+          setFormData(prev => ({ ...prev, organizationDetails: { ...prev.organizationDetails, organization: value } }))
+          if (errors['org-organization']) {
+            setErrors(prev => ({ ...prev, 'org-organization': '' }))
+          }
+        }} error={errors['org-organization']} />
+        <Select label="Location*" options={locationOptions} value={formData.organizationDetails.location} onChange={(value) => {
+          setFormData(prev => ({ ...prev, organizationDetails: { ...prev.organizationDetails, location: value } }))
+          if (errors['org-location']) {
+            setErrors(prev => ({ ...prev, 'org-location': '' }))
+          }
+        }} error={errors['org-location']} />
         <Select label="Reporting Manager" options={reportingManagerOptions} value={formData.organizationDetails.reportingManager} onChange={(value) => setFormData(prev => ({ ...prev, organizationDetails: { ...prev.organizationDetails, reportingManager: value } }))} />
       </Section>
 

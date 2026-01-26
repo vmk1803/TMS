@@ -38,6 +38,8 @@ export default function OrganizationForm({
   const { users } = useUsers()
   const { locations } = useLocations({ autoFetch: true, fetchAll: true })
 
+  const [selectedLocation, setSelectedLocation] = useState<string>('')
+
   const [formData, setFormData] = useState<OrganizationFormData>({
     organizationName: '',
     email: '',
@@ -83,7 +85,9 @@ export default function OrganizationForm({
       newErrors.description = 'Description is required'
     }
 
-    // primaryAdmin is now optional
+    if (!formData.primaryAdmin) {
+      newErrors.primaryAdmin = 'Primary admin is required'
+    }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -159,11 +163,11 @@ export default function OrganizationForm({
         <div className="grid grid-cols-3 gap-6">
           <div>
             <label className="text-sm font-medium">
-              Company Name *
+              Organization Name *
               {errors.organizationName && <span className="text-red-500 ml-1">*</span>}
             </label>
             <Input
-              placeholder="Enter Company Name"
+              placeholder="Enter Organization Name"
               value={formData.organizationName}
               onChange={(e) => handleInputChange('organizationName', e.target.value)}
               className={`rounded-xl bg-[#efeff5] ${errors.organizationName ? 'border-red-500' : ''}`}
@@ -197,6 +201,7 @@ export default function OrganizationForm({
             <Input
               placeholder="Enter Contact Number"
               value={formData.contactNumber}
+              type="number"
               onChange={(e) => handleInputChange('contactNumber', e.target.value)}
               className={`rounded-xl bg-[#efeff5] ${errors.contactNumber ? 'border-red-500' : ''}`}
             />
@@ -227,19 +232,23 @@ export default function OrganizationForm({
       {/* ================= PRIMARY ADMIN ================= */}
       <Card className="rounded-xl">
         <h3 className="font-semibold mb-3">
-          Primary Admin (Optional)
+          Primary Admin *
+          {errors.primaryAdmin && <span className="text-red-500 ml-1">*</span>}
         </h3>
         <Select
           placeholder="Select Primary Admin"
           value={formData.primaryAdmin}
           onChange={(value) => handleInputChange('primaryAdmin', value)}
-          className="w-full rounded-xl bg-[#efeff5]"
+          className={`w-full rounded-xl bg-[#efeff5] ${errors.primaryAdmin ? 'border-red-500' : ''}`}
           allowClear
           options={users.map(user => ({
             label: `${user.firstName} ${user.lastName} (${user.email})`,
             value: user._id
           }))}
         />
+        {errors.primaryAdmin && (
+          <p className="text-red-500 text-xs mt-1">{errors.primaryAdmin}</p>
+        )}
       </Card>
 
       {/* ================= LOCATIONS ================= */}
@@ -249,10 +258,13 @@ export default function OrganizationForm({
         <div className="flex items-center gap-3 mb-4">
           <Select
             placeholder="Select Location"
+            value={selectedLocation}
             className="w-[300px] rounded-xl bg-[#efeff5]"
             onChange={(value) => {
+              setSelectedLocation(value)
               if (value && !formData.locations.includes(value)) {
                 handleInputChange('locations', [...formData.locations, value])
+                setSelectedLocation('') // Clear the select after adding
               }
             }}
             options={locations.map(location => ({

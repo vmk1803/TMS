@@ -82,15 +82,26 @@ export default function CreateGroupPage() {
         description: description.trim() || undefined,
       }
 
+      let success = false
+
       if (isEditMode && groupId) {
-        await updateGroup(groupId, groupData)
-        message.success('Group updated successfully')
+        const result = await updateGroup(groupId, groupData)
+        success = result !== null
+        if (success) {
+          message.success('Group updated successfully')
+        }
       } else {
-        await createGroup(groupData)
-        message.success('Group created successfully')
+        const result = await createGroup(groupData)
+        success = result !== null
+        if (success) {
+          message.success('Group created successfully')
+        }
       }
 
-      router.push('/user-management/groups')
+      // Only navigate away if operation succeeded
+      if (success) {
+        router.push('/user-management/groups')
+      }
     } catch (error) {
       // Error handling is done in the hooks
       console.error('Save group error:', error)

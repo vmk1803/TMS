@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { Download } from 'lucide-react'
 import { useGroups } from '@/hooks/useGroups'
 import { useDepartments } from '@/hooks/useDepartments'
 import { useDebouncedSearch } from '@/hooks/useDebouncedSearch'
 import { useCSVExport } from '@/hooks/useCSVExport'
+import { exportToCSV } from '@/utils/csvGenerator'
 
 // Lazy load heavy components
 const ListPage = dynamic(() => import('@/components/common/ListPage'), {
@@ -19,13 +21,21 @@ const DeleteConfirmModal = dynamic(() => import('@/components/common/DeleteConfi
   loading: () => null
 })
 
+const ConfirmationModal = dynamic(() => import('@/components/common/ConfirmationModal'), {
+  loading: () => null
+})
+
 export default function GroupsListPage() {
   const router = useRouter()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [groupToDelete, setGroupToDelete] = useState<any>(null)
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const [bulkSelectedIds, setBulkSelectedIds] = useState<string[]>([])
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
+  const [selectedGroup, setSelectedGroup] = useState<string>('all')
 
   // Search functionality
   const {
@@ -41,30 +51,35 @@ export default function GroupsListPage() {
   // Departments for filter dropdown
   const { departments, loading: departmentsLoading } = useDepartments({ fetchAll: true })
 
+  // All groups for dropdown filter
+  const { groups: allGroupsForFilter, loading: allGroupsLoading } = useGroups({ fetchAll: true })
+
   // Groups data with search and department filtering
   const {
     groups: rawGroups,
     loading,
     pagination,
-    deleteGroup
+    deleteGroup,
+    bulkDeleteGroups
   } = useGroups({
     autoFetch: true,
     searchString: debouncedSearchQuery,
     department: selectedDepartment === 'all' ? undefined : selectedDepartment,
+    group: selectedGroup === 'all' ? undefined : selectedGroup,
     page: currentPage,
     pageSize: itemsPerPage
   })
 
   // Format groups data for the table
-  const groups = rawGroups.map(group => ({
+  const groups = rawGroups?.length ? rawGroups.map(group => ({
     ...group, // Keep all original properties including id/_id
     name: group.name,
-    manager: `${group.manager.firstName} ${group.manager.lastName}`,
-    members: group.members.length.toString(),
-    department: group.department.name,
-    type: 'Task', // Default value as requested
-    modified: group.updatedAt ? new Date(group.updatedAt).toLocaleDateString() : 'N/A'
-  }))
+    manager: group.manager ? `${group.manager.firstName} ${group.manager.lastName}` : 'N/A',
+    members: group.members?.length?.toString() || '0',
+    department: group.department?.name || 'N/A',
+    createdAt: group.createdAt ? new Date(group.createdAt).toLocaleDateString() : 'N/A',
+    updatedAt: group.updatedAt ? new Date(group.updatedAt).toLocaleDateString() : 'N/A'
+  })) : []
 
   const columns = [
     {
@@ -91,13 +106,13 @@ export default function GroupsListPage() {
       key: 'department',
     },
     {
-      title: 'Type',
-      dataIndex: 'type',
-      key: 'type',
+      title: 'Created Date',
+      dataIndex: 'createdAt',
+      key: 'created',
     },
     {
       title: 'Last modified',
-      dataIndex: 'modified',
+      dataIndex: 'updatedAt',
       key: 'modified',
     },
   ]
@@ -106,7 +121,7 @@ export default function GroupsListPage() {
     searchPlaceholder: "Search groups",
     dropdowns: [
       {
-        label: 'All Company',
+        label: 'All Organizations',
         items: [{ key: 'all', label: 'All Company' }]
       },
       {
@@ -124,8 +139,18 @@ export default function GroupsListPage() {
         }
       },
       {
-        label: 'All Groups',
-        items: [{ key: 'all', label: 'All Groups' }]
+        label: selectedGroup === 'all' ? 'All Groups' : allGroupsForFilter.find(group => (group.id || group._id) === selectedGroup)?.name || 'All Groups',
+        items: [
+          { key: 'all', label: 'All Groups' },
+          ...allGroupsForFilter.map(group => ({
+            key: group.id || group._id,
+            label: group.name
+          }))
+        ],
+        onClick: ({ key }: { key: string }) => {
+          setSelectedGroup(key)
+          setCurrentPage(1) // Reset to first page when filtering
+        }
       },
     ]
   }
@@ -140,7 +165,6 @@ export default function GroupsListPage() {
   }
 
   const handleEdit = (record: any) => {
-    console.log(record, 'record')
     const groupId = record.id || record._id
     router.push(`/user-management/groups/create?groupId=${groupId}`)
   }
@@ -153,7 +177,8 @@ export default function GroupsListPage() {
   const confirmDelete = async () => {
     if (!groupToDelete) return
 
-    const success = await deleteGroup(groupToDelete.id)
+    const groupId = groupToDelete.id || groupToDelete._id
+    const success = await deleteGroup(groupId)
     if (success) {
       setDeleteOpen(false)
       setGroupToDelete(null)
@@ -176,11 +201,66 @@ export default function GroupsListPage() {
 
   const handleExportCSV = () => {
     const filters = {
-      searchTerm: debouncedSearchQuery,
-      departmentId: selectedDepartment !== 'all' ? selectedDepartment : undefined,
+      search_string: debouncedSearchQuery,
+      department: selectedDepartment !== 'all' ? selectedDepartment : undefined,
+      group: selectedGroup !== 'all' ? selectedGroup : undefined,
     }
     exportData('groups', filters)
   }
+
+  // Bulk actions
+  const handleBulkDelete = (selectedIds: string[]) => {
+    setBulkSelectedIds(selectedIds)
+    setBulkDeleteOpen(true)
+  }
+
+  const confirmBulkDelete = async () => {
+    if (bulkSelectedIds.length === 0) return
+    setIsBulkDeleting(true)
+    try {
+      await bulkDeleteGroups(bulkSelectedIds)
+      setBulkDeleteOpen(false)
+      setBulkSelectedIds([])
+    } finally {
+      setIsBulkDeleting(false)
+    }
+  }
+
+  const cancelBulkDelete = () => {
+    setBulkDeleteOpen(false)
+    setBulkSelectedIds([])
+  }
+
+  const handleBulkExportCSV = (_selectedIds: string[], selectedRecords: any[]) => {
+    exportToCSV(
+      selectedRecords.map((g: any) => ({
+        'Group Name': g.name,
+        'Manager': g.manager,
+        'Members': g.members,
+        'Department': g.department,
+        'Created Date': g.createdAt,
+        'Last Modified': g.updatedAt,
+      })),
+      { filename: `selected-groups-${new Date().toISOString().split('T')[0]}` }
+    )
+  }
+
+  const bulkActions = [
+    {
+      key: 'delete',
+      label: 'Delete',
+      danger: true,
+      onClick: (selectedIds: string[]) => handleBulkDelete(selectedIds),
+      loading: isBulkDeleting,
+    },
+    {
+      key: 'export',
+      label: 'Export CSV',
+      icon: <Download size={16} />,
+      onClick: handleBulkExportCSV,
+      className: 'border-secondary'
+    }
+  ]
 
   return (
     <>
@@ -203,6 +283,7 @@ export default function GroupsListPage() {
         pageSize={itemsPerPage}
         onPageSizeChange={handlePageSizeChange}
         onPageChange={handlePageChange}
+        bulkActions={bulkActions}
       />
 
       {/* Delete Modal */}
@@ -211,6 +292,17 @@ export default function GroupsListPage() {
         onClose={cancelDelete}
         onConfirm={confirmDelete}
         title="Delete Group"
+      />
+
+      {/* Bulk Delete Confirmation */}
+      <ConfirmationModal
+        isOpen={bulkDeleteOpen}
+        onClose={cancelBulkDelete}
+        onConfirm={confirmBulkDelete}
+        title="Delete Groups"
+        body={`Do you really want to delete ${bulkSelectedIds.length} group${bulkSelectedIds.length > 1 ? 's' : ''}?`}
+        confirmText="Yes"
+        cancelText="No"
       />
     </>
   )

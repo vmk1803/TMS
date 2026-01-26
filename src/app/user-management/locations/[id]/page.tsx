@@ -30,6 +30,10 @@ export default function LocationDetailsPage() {
         title: 'Created',
         date: location.createdAt ? `Created on ${new Date(location.createdAt).toLocaleDateString()}` : 'Created date not available',
       },
+      {
+        title: 'Updated',
+        date: location.updatedAt ? `Updated on ${new Date(location.updatedAt).toLocaleDateString()}` : 'Updated date not available',
+      },
       // You can add more logs here if you have activity tracking
     ],
   }

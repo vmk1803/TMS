@@ -496,7 +496,7 @@ const AssignMap: React.FC = () => {
         </div>
       </div>
       <div className="px-6 pb-2 text-[11px] text-gray-500">
-        Drawing mode: click multiple points on the map to create a polygon. Double-click a corner dot to remove it. Click "Undo" to remove the current shape.
+        Drawing mode: click multiple points on the map to create a polygon. Double-click a corner dot to remove it. Click &quot;Undo&quot; to remove the current shape.
       </div>
 
       <div className="flex-1 relative">

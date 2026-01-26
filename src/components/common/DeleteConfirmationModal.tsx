@@ -8,6 +8,7 @@ interface DeleteModalProps {
   onClose: () => void;
   onConfirm: () => void;
   title?: string;
+  loading?: boolean;
 }
 
 const DeleteConfirmationModal: React.FC<DeleteModalProps> = ({
@@ -15,6 +16,7 @@ const DeleteConfirmationModal: React.FC<DeleteModalProps> = ({
   onClose,
   onConfirm,
   title = "Lab Test",
+  loading = false,
 }) => {
   return (
     <AnimatePresence>
@@ -50,18 +52,25 @@ const DeleteConfirmationModal: React.FC<DeleteModalProps> = ({
               <div className="flex justify-center gap-4 mt-6">
                 <button
                   onClick={onClose}
-                  className="px-6 py-2 border border-gray-300 rounded-full text-sm text-gray-700 hover:bg-gray-100 transition-all"
+                  disabled={loading}
+                  className="px-6 py-2 border border-gray-300 rounded-full text-sm text-gray-700 hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   No
                 </button>
                 <button
                   onClick={() => {
                     onConfirm();
-                    onClose();
+                    if (!loading) {
+                      onClose();
+                    }
                   }}
-                  className="px-6 py-2 bg-secondary hover:bg-secondary text-white rounded-full text-sm font-medium transition-all shadow-md"
+                  disabled={loading}
+                  className="px-6 py-2 bg-secondary hover:bg-secondary text-white rounded-full text-sm font-medium transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  Yes
+                  {loading && (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  )}
+                  {loading ? 'Deleting...' : 'Yes'}
                 </button>
               </div>
             </div>

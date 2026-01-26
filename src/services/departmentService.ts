@@ -5,17 +5,50 @@ export interface Department {
   id: string
   _id: string
   name: string
+  usersCount?: number
+  description?: string
   organization: {
     _id: string
-    name: string
+    organizationName: string
+    email: string
+    contactNumber: string
+    description: string
+    locations: string[]
+    createdBy: string
+    deletedAt: string | null
+    createdAt: string
+    updatedAt: string
+    __v: number
   }
   headOfDepartment: {
     _id: string
-    fname: string
-    lname: string
+    firstName: string
+    lastName: string
     email: string
-  }
-  status: string
+    mobileNumber: string
+    gender: string
+    active: boolean
+    organizationDetails: {
+      role: string
+      department: string
+      organization: string
+      location: string
+      reportingManager: string
+    }
+    password: string
+    passwordSetting: string
+    assets: any[]
+    deletedAt: string | null
+    createdAt: string
+    updatedAt: string
+    __v: number
+    lastLogin: string | null
+  } | null
+  createdBy: {
+    _id: string
+    firstName: string
+    lastName: string
+  } | null
   createdAt?: string
   updatedAt?: string
 }
@@ -24,7 +57,7 @@ export interface CreateDepartmentData {
   name: string
   organization: string
   headOfDepartment: string
-  status?: string
+  description?: string
 }
 
 export interface CreateDepartmentResponse {
@@ -36,7 +69,7 @@ export interface UpdateDepartmentData {
   name?: string
   organization?: string
   headOfDepartment?: string
-  status?: string
+  description?: string
 }
 
 export interface PaginatedDepartmentsResponse {
@@ -61,7 +94,6 @@ export const departmentApi = {
       search_string?: string
       organization_id?: string
       department_id?: string
-      status?: string
     },
     options?: { signal?: AbortSignal }
   ): Promise<PaginatedDepartmentsResponse> => {
@@ -112,5 +144,16 @@ export const departmentApi = {
   // Delete department
   deleteDepartment: async (id: string): Promise<void> => {
     await api.delete(`/user-management/departments/${id}`)
+  },
+
+  // Bulk operations
+  bulkOperation: async (data: { ids: string[], operation: 'delete' }): Promise<{
+    successCount: number
+    failedCount: number
+    successIds: string[]
+    failedIds: string[]
+  }> => {
+    const response = await api.post('/user-management/departments/bulk-update', data)
+    return response.data.data
   },
 }
